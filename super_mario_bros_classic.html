@@ -1,0 +1,3013 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>超级玛丽经典版 - Super Mario Bros. Classic</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --pixel-font: 'Press Start 2P', 'Courier New', monospace;
+      --ui-font: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: var(--ui-font);
+      background: radial-gradient(circle at 50% 20%, #1e293b 0%, #090d16 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-x: hidden;
+    }
+    .pixel-font {
+      font-family: var(--pixel-font);
+      letter-spacing: 0.04em;
+    }
+    #game-canvas {
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -webkit-crisp-edges;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #5c94fc;
+    }
+    .crt-frame {
+      position: relative;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), inset 0 0 0 2px rgba(255,255,255,0.08);
+      border: 4px solid #334155;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #000;
+    }
+    .crt-scanlines::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.16) 50%
+      );
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .dpad-btn, .action-btn {
+      touch-action: none;
+      transition: transform 0.06s ease, background-color 0.1s ease;
+    }
+    .dpad-btn:active, .dpad-btn.active {
+      transform: scale(0.92);
+      background-color: #475569 !important;
+    }
+    .action-btn:active, .action-btn.active {
+      transform: scale(0.92);
+      filter: brightness(1.15);
+    }
+  </style>
+</head>
+<body class="p-2 sm:p-4">
+
+  <!-- Top Arcade Header & Controls Bar -->
+  <header class="w-full max-w-5xl mb-2.5 flex flex-wrap items-center justify-between gap-2 bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-2 shadow-lg backdrop-blur">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center shadow-inner border border-red-400 font-black text-white text-sm pixel-font">M</div>
+      <div>
+        <h1 class="text-sm sm:text-base font-extrabold tracking-tight text-white flex items-center gap-2">
+          <span>超级玛丽经典版</span>
+          <span class="hidden md:inline-block text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold">NES 8-BIT EDITION</span>
+        </h1>
+        <p class="text-[11px] text-slate-400 hidden sm:block">支持隐藏1UP、水管密室、成长蘑菇、火焰花、无敌星与库巴城堡决战</p>
+      </div>
+    </div>
+
+    <!-- Stage Selector & Utility Buttons -->
+    <div class="flex flex-wrap items-center gap-1.5">
+      <div class="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700 mr-1">
+        <button id="btn-stage-1" type="button" class="px-2.5 py-1 text-xs font-bold rounded-md bg-red-600 text-white transition" title="第一关：地上世界">1-1 地上</button>
+        <button id="btn-stage-2" type="button" class="px-2.5 py-1 text-xs font-bold rounded-md text-slate-300 hover:text-white transition" title="第二关：地下洞穴">1-2 地下</button>
+        <button id="btn-stage-3" type="button" class="px-2.5 py-1 text-xs font-bold rounded-md text-slate-300 hover:text-white transition" title="第三关：库巴城堡">1-3 城堡</button>
+      </div>
+
+      <button id="btn-pause" type="button" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1">
+        <span id="pause-icon">⏸</span> <span id="pause-label">暂停</span>
+      </button>
+
+      <button id="btn-restart" type="button" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1">
+        <span>🔄</span> <span>重玩</span>
+      </button>
+
+      <button id="btn-audio" type="button" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white border border-emerald-400/40 transition flex items-center gap-1">
+        <span id="audio-icon">🔊</span> <span id="audio-label">音效: 开</span>
+      </button>
+
+      <button id="btn-fullscreen" type="button" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition" title="切换全屏模式">
+        ⛶ 全屏
+      </button>
+
+      <button id="btn-web-share" type="button" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 transition">
+        🌐 网页导出/部署
+      </button>
+
+      <button id="btn-help" type="button" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition">
+        ❓ 攻略
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Game Viewport Container -->
+  <main class="w-full max-w-5xl flex flex-col items-center">
+    <div id="canvas-wrapper" class="w-full aspect-[16/10] max-h-[68vh] crt-frame crt-scanlines">
+      <canvas id="game-canvas" width="768" height="480"></canvas>
+
+      <!-- Start / Pause / Stage Clear Overlay -->
+      <div id="overlay-screen" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 text-center transition-opacity">
+        <div class="max-w-md w-full bg-slate-900/95 border-2 border-amber-400/80 rounded-2xl p-5 sm:p-6 shadow-2xl">
+          <div class="inline-block px-3 py-1 rounded-full bg-red-600/20 border border-red-500/40 text-red-300 text-xs font-bold mb-2">
+            SUPER MARIO BROS. CLASSIC
+          </div>
+          <h2 id="overlay-title" class="text-xl sm:text-2xl font-black text-amber-400 pixel-font mb-3 drop-shadow">
+            SUPER MARIO
+          </h2>
+          <p id="overlay-subtitle" class="text-xs sm:text-sm text-slate-300 mb-4 leading-relaxed">
+            原汁原味红白机像素平台跳跃！顶碎砖块、收集蘑菇与火焰花、进入秘密金币水管，最终击败库巴夺回城堡！
+          </p>
+
+          <!-- Mini Powerup Legend -->
+          <div class="grid grid-cols-3 gap-2 mb-5 text-left bg-slate-800/90 p-3 rounded-xl border border-slate-700 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">🍄</span>
+              <div>
+                <div class="font-bold text-amber-300">超级蘑菇</div>
+                <div class="text-[10px] text-slate-400">变大并可顶碎砖块</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-lg">🌺</span>
+              <div>
+                <div class="font-bold text-red-400">火焰花</div>
+                <div class="text-[10px] text-slate-400">按 J / X 发射火球</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-lg">⭐</span>
+              <div>
+                <div class="font-bold text-yellow-300">无敌星</div>
+                <div class="text-[10px] text-slate-400">全身闪烁碰撞无敌</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-center gap-3">
+            <button id="btn-start-game" type="button" class="px-6 py-3 rounded-xl bg-gradient-to-b from-red-500 to-red-700 hover:from-red-400 hover:to-red-600 text-white font-extrabold text-sm sm:text-base shadow-lg shadow-red-900/50 border border-red-300/40 transition transform hover:scale-105 active:scale-95 pixel-font">
+              ▶ 开始游戏
+            </button>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex flex-wrap justify-center gap-x-4 gap-y-1">
+            <span>⬅️➡️ / AD：移动</span>
+            <span>⬇️ / S：下蹲/进水管</span>
+            <span>空格 / W / K：跳跃</span>
+            <span>J / X / Shift：加速 & 火球</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Help / Guide Modal -->
+      <div id="help-modal" class="hidden absolute inset-0 z-20 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4">
+        <div class="max-w-lg w-full bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-2xl text-left">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+            <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+              <span>🍄</span> <span>经典超级玛丽 - 操作与隐藏彩蛋指南</span>
+            </h3>
+            <button id="btn-close-help" type="button" class="text-slate-400 hover:text-white text-sm font-bold px-2 py-1 rounded bg-slate-800">✕</button>
+          </div>
+          <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+            <div class="bg-slate-800/70 p-3 rounded-xl border border-slate-700/70">
+              <div class="font-bold text-white mb-1">🎮 键盘与触屏操作</div>
+              <ul class="list-disc list-inside space-y-1 text-slate-300">
+                <li><strong>移动 / 下蹲：</strong> 方向键 <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">←</kbd> <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">→</kbd> 或 <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">A</kbd> <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">D</kbd>，按 <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">↓</kbd> 或 <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">S</kbd> 下蹲或进入特殊绿水管。</li>
+                <li><strong>高低跳跃：</strong> 轻按 <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">空格</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">K</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">W</kbd> 小跳，长按可跳得更高。</li>
+                <li><strong>冲刺与火球：</strong> 按住 <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">J</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">X</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">Shift</kbd> 助跑冲刺；吃到火焰花后按该键发射弹跳火球。</li>
+              </ul>
+            </div>
+            <div class="bg-slate-800/70 p-3 rounded-xl border border-slate-700/70">
+              <div class="font-bold text-amber-300 mb-1">✨ 经典隐藏彩蛋（100%还原）</div>
+              <ul class="list-disc list-inside space-y-1 text-slate-300">
+                <li><strong>隐藏绿蘑菇 (1-UP)：</strong> 在 <strong>1-1 关</strong>第四根绿水管与第一处深坑前方的半空中，顶开隐藏方块即可获得加命绿蘑菇！</li>
+                <li><strong>秘密水管金币室：</strong> 在 <strong>1-1 关</strong>标有黄色箭头的第四根高水管上按 <kbd class="px-1.5 py-0.5 bg-slate-700 rounded">↓</kbd> 下蹲，即可钻入地下秘密金币房！</li>
+                <li><strong>连续踢龟壳奖励：</strong> 踩扁绿龟后踢出龟壳，连续撞击敌人可获得 100 → 200 → 400 → 800 → 1000 → 1UP 连击奖励！</li>
+                <li><strong>库巴城堡决战 (1-3)：</strong> 既可用火球正面击败库巴，也可灵巧越过库巴触碰桥尾的金斧头，砍断吊桥让库巴坠入熔岩！</li>
+              </ul>
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end">
+            <button id="btn-ok-help" type="button" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold">我知道了，继续冒险</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Web Export & Online Hosting Modal -->
+      <div id="web-share-modal" class="hidden absolute inset-0 z-20 flex items-center justify-center bg-slate-950/85 backdrop-blur-sm p-4">
+        <div class="max-w-lg w-full bg-slate-900 border border-sky-500/50 rounded-2xl p-5 shadow-2xl text-left">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+            <h3 class="text-base font-bold text-sky-400 flex items-center gap-2">
+              <span>🌐</span> <span>独立网页下载与在线网址生成</span>
+            </h3>
+            <button id="btn-close-web-share" type="button" class="text-slate-400 hover:text-white text-sm font-bold px-2 py-1 rounded bg-slate-800">✕</button>
+          </div>
+          <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+            <p class="text-slate-300">
+              本游戏已封装为<strong>零外部依赖的单文件 HTML5 网页应用</strong>（所有像素精灵、关卡数据与 8-bit 音效合成器均内嵌在单个文件中）。
+            </p>
+            <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div class="font-bold text-white text-sm">第一步：下载独立网页文件 (index.html)</div>
+                <div class="text-[11px] text-slate-400">双击即可在任何电脑/手机浏览器直接打开游玩，或用于部署公网链接</div>
+              </div>
+              <button id="btn-download-html" type="button" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow transition">
+                💾 下载 index.html
+              </button>
+            </div>
+            <div class="bg-slate-800/70 p-3.5 rounded-xl border border-slate-700 space-y-1.5">
+              <div class="font-bold text-amber-300">第二步：10秒免费生成永久公网在线链接</div>
+              <ul class="list-disc list-inside space-y-1 text-slate-300">
+                <li><strong>方式一（最快 · Netlify Drop）：</strong> 打开 <code>app.netlify.com/drop</code>，将包含 <code>index.html</code> 的文件夹直接拖入页面，5 秒内即可获得全球可访问的 <code>https://xxx.netlify.app</code> 链接。</li>
+                <li><strong>方式二（GitHub Pages / Vercel / Cloudflare Pages）：</strong> 将下载的 <code>index.html</code> 上传至任意静态托管平台，即可生成永久免费 HTTPS 游戏网址分享给好友。</li>
+              </ul>
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end">
+            <button id="btn-ok-web-share" type="button" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold border border-slate-600">关闭窗口</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Virtual Gamepad Controller (Responsive for Mobile/Tablet & Desktop Quick Click) -->
+    <div class="w-full mt-3 bg-slate-900/90 border border-slate-800 rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-4 shadow-lg">
+      <!-- D-Pad -->
+      <div class="flex items-center gap-2">
+        <button id="touch-left" type="button" class="dpad-btn w-12 h-12 sm:w-14 sm:h-12 rounded-xl bg-slate-800 border-2 border-slate-600 flex items-center justify-center text-lg font-bold text-white shadow active:bg-slate-700" aria-label="向左">
+          ◀
+        </button>
+        <button id="touch-down" type="button" class="dpad-btn w-12 h-12 sm:w-14 sm:h-12 rounded-xl bg-slate-800 border-2 border-slate-600 flex flex-col items-center justify-center text-xs font-bold text-amber-300 shadow active:bg-slate-700" aria-label="下蹲或进水管">
+          <span>▼</span>
+          <span class="text-[9px] text-slate-300">下蹲/水管</span>
+        </button>
+        <button id="touch-right" type="button" class="dpad-btn w-12 h-12 sm:w-14 sm:h-12 rounded-xl bg-slate-800 border-2 border-slate-600 flex items-center justify-center text-lg font-bold text-white shadow active:bg-slate-700" aria-label="向右">
+          ▶
+        </button>
+      </div>
+
+      <!-- Live Status Bar Pill -->
+      <div class="hidden lg:flex items-center gap-4 px-4 py-2 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
+        <div class="flex items-center gap-1.5">
+          <span class="text-slate-400">当前状态:</span>
+          <span id="status-form-badge" class="px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-bold">小玛丽</span>
+        </div>
+        <div class="h-3 w-px bg-slate-800"></div>
+        <div id="status-tip-text" class="text-slate-300">提示：站在第4根高水管上按 ↓ 可进入地下金币密室！</div>
+      </div>
+
+      <!-- Action Buttons (B = Run/Fire, A = Jump) -->
+      <div class="flex items-center gap-3">
+        <button id="touch-b" type="button" class="action-btn w-14 h-12 sm:w-16 sm:h-12 rounded-xl bg-amber-600 border-2 border-amber-400 flex flex-col items-center justify-center text-white font-extrabold shadow-md">
+          <span class="text-sm leading-none">B</span>
+          <span class="text-[9px] font-semibold opacity-90">加速/火球</span>
+        </button>
+        <button id="touch-a" type="button" class="action-btn w-14 h-12 sm:w-16 sm:h-12 rounded-xl bg-red-600 border-2 border-red-400 flex flex-col items-center justify-center text-white font-extrabold shadow-md">
+          <span class="text-sm leading-none">A</span>
+          <span class="text-[9px] font-semibold opacity-90">跳跃</span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /*************************************************************************
+     * 1. SYNTHESIZED 8-BIT NES WEB AUDIO ENGINE (Zero external dependencies)
+     *************************************************************************/
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+        this.bgmTimer = null;
+        this.bgmNoteIndex = 0;
+        this.currentTrack = 'overworld';
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            this.ctx = new AudioCtx();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggle() {
+        this.enabled = !this.enabled;
+        if (!this.enabled) {
+          this.stopBGM();
+        } else {
+          this.init();
+          if (game && game.state === 'playing') {
+            this.startBGM(game.getDesiredTrack());
+          }
+        }
+        return this.enabled;
+      }
+
+      playTone(freq, duration, type = 'square', vol = 0.08, delay = 0, slideTo = null) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime + delay;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        if (slideTo !== null) {
+          osc.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), now + duration);
+        }
+
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + duration + 0.01);
+      }
+
+      playNoise(duration, vol = 0.08, delay = 0) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime + delay;
+        const bufferSize = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(900, now);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start(now);
+      }
+
+      sfxJump(isBig = false) {
+        const start = isBig ? 160 : 220;
+        const end = isBig ? 520 : 680;
+        this.playTone(start, 0.18, 'square', 0.07, 0, end);
+      }
+
+      sfxCoin() {
+        this.playTone(987.77, 0.07, 'square', 0.07, 0);      // B5
+        this.playTone(1318.51, 0.25, 'square', 0.07, 0.07);  // E6
+      }
+
+      sfxBump() {
+        this.playTone(140, 0.09, 'triangle', 0.12, 0, 70);
+      }
+
+      sfxBreakBrick() {
+        this.playNoise(0.14, 0.12, 0);
+        this.playTone(180, 0.12, 'sawtooth', 0.06, 0, 55);
+      }
+
+      sfxPowerupAppear() {
+        const notes = [330, 392, 659, 523, 587, 784];
+        notes.forEach((n, idx) => {
+          this.playTone(n, 0.055, 'square', 0.06, idx * 0.05);
+        });
+      }
+
+      sfxPowerup() {
+        const notes = [330, 392, 659, 523, 587, 784, 659, 784, 1046.5];
+        notes.forEach((n, idx) => {
+          this.playTone(n, 0.06, 'square', 0.07, idx * 0.045);
+        });
+      }
+
+      sfxOneUp() {
+        const notes = [330, 392, 659, 523, 587, 784];
+        notes.forEach((n, idx) => {
+          this.playTone(n * 1.25, 0.075, 'triangle', 0.09, idx * 0.065);
+        });
+      }
+
+      sfxStomp() {
+        this.playTone(400, 0.08, 'square', 0.07, 0, 140);
+      }
+
+      sfxKick() {
+        this.playTone(520, 0.09, 'triangle', 0.09, 0, 180);
+      }
+
+      sfxFireball() {
+        this.playTone(720, 0.06, 'square', 0.06, 0, 240);
+      }
+
+      sfxPipe() {
+        for (let i = 0; i < 4; i++) {
+          this.playTone(260 - i * 35, 0.06, 'square', 0.07, i * 0.07, 140 - i * 20);
+        }
+      }
+
+      sfxFlagpole() {
+        const scale = [261.6, 293.7, 329.6, 349.2, 392.0, 440.0, 493.9, 523.3, 587.3, 659.3, 698.5, 784.0];
+        scale.forEach((n, i) => {
+          this.playTone(n, 0.05, 'square', 0.06, i * 0.04);
+        });
+      }
+
+      sfxStageClear() {
+        this.stopBGM();
+        const melody = [
+          [392, 0.12], [523, 0.12], [659, 0.12], [784, 0.18], [659, 0.12], [784, 0.38]
+        ];
+        let t = 0;
+        melody.forEach(([freq, dur]) => {
+          this.playTone(freq, dur, 'square', 0.08, t);
+          t += dur + 0.02;
+        });
+      }
+
+      sfxDie() {
+        this.stopBGM();
+        const notes = [493.88, 698.46, 698.46, 698.46, 659.25, 587.33, 523.25, 329.63, 261.63];
+        const durs  = [0.08,   0.12,   0.10,   0.12,   0.12,   0.12,   0.16,   0.12,   0.30];
+        let delay = 0;
+        notes.forEach((n, idx) => {
+          this.playTone(n, durs[idx], 'square', 0.08, delay);
+          delay += durs[idx] + 0.02;
+        });
+      }
+
+      startBGM(track = 'overworld') {
+        this.stopBGM();
+        this.currentTrack = track;
+        this.bgmNoteIndex = 0;
+        if (!this.enabled) return;
+
+        // Classic NES-inspired motif sequences (freq, duration_steps)
+        const tracks = {
+          overworld: {
+            tempo: 135,
+            notes: [
+              659, 659, 0, 659, 0, 523, 659, 0, 784, 0, 0, 0, 392, 0, 0, 0,
+              523, 0, 0, 392, 0, 0, 330, 0, 0, 440, 0, 494, 0, 466, 440, 0,
+              392, 659, 784, 880, 0, 698, 784, 0, 659, 0, 523, 587, 494, 0, 0, 0
+            ]
+          },
+          underground: {
+            tempo: 130,
+            notes: [
+              261.6, 523.2, 220.0, 440.0, 233.1, 466.2, 0, 0,
+              261.6, 523.2, 220.0, 440.0, 233.1, 466.2, 0, 0,
+              174.6, 349.2, 146.8, 293.7, 155.6, 311.1, 0, 0
+            ]
+          },
+          castle: {
+            tempo: 110,
+            notes: [
+              220, 233, 220, 196, 220, 233, 220, 185,
+              220, 233, 220, 196, 220, 247, 233, 196
+            ]
+          },
+          star: {
+            tempo: 95,
+            notes: [
+              523, 523, 523, 0, 523, 523, 587, 523,
+              494, 494, 494, 0, 494, 494, 523, 494
+            ]
+          }
+        };
+
+        const active = tracks[track] || tracks.overworld;
+        this.bgmTimer = setInterval(() => {
+          if (!this.enabled || !game || game.state !== 'playing') return;
+          const freq = active.notes[this.bgmNoteIndex % active.notes.length];
+          this.bgmNoteIndex++;
+          if (freq > 0) {
+            this.playTone(freq, (active.tempo / 1000) * 0.8, track === 'underground' ? 'triangle' : 'square', 0.032);
+          }
+        }, active.tempo);
+      }
+
+      stopBGM() {
+        if (this.bgmTimer) {
+          clearInterval(this.bgmTimer);
+          this.bgmTimer = null;
+        }
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    /*************************************************************************
+     * 2. PROCEDURAL PIXEL-ART SPRITE FACTORY (Authentic 16x16 & 16x32 Matrices)
+     *************************************************************************/
+    const TILE = 32; // Each tile is 32x32 screen pixels (2x scale of 16x16 NES pixels)
+
+    function createPixelSprite(matrix, palette, scale = 2) {
+      const h = matrix.length;
+      const w = matrix[0].length;
+      const c = document.createElement('canvas');
+      c.width = w * scale;
+      c.height = h * scale;
+      const ctx = c.getContext('2d');
+      for (let y = 0; y < h; y++) {
+        const row = matrix[y];
+        for (let x = 0; x < w; x++) {
+          const ch = row[x];
+          if (ch !== '.' && palette[ch]) {
+            ctx.fillStyle = palette[ch];
+            ctx.fillRect(x * scale, y * scale, scale, scale);
+          }
+        }
+      }
+      return c;
+    }
+
+    const Sprites = {};
+
+    function buildAllSprites() {
+      // Mario Palettes (Normal Red/Brown, Fire White/Red)
+      const palMarioNormal = {
+        'R': '#e52521', // Red cap/shirt
+        'S': '#fca044', // Skin peach
+        'B': '#885818', // Brown hair/boots/overalls
+        'O': '#0058f8', // Classic blue overalls for vibrant contrast
+        'Y': '#fbd000'  // Yellow buttons
+      };
+      const palMarioFire = {
+        'R': '#ffffff', // White cap/shirt
+        'S': '#fca044', // Skin
+        'B': '#885818', // Boots
+        'O': '#e52521', // Red overalls
+        'Y': '#fbd000'
+      };
+
+      // Small Mario Idle (16x16)
+      const smallIdleGrid = [
+        "....RRRRR.......",
+        "...RRRRRRRRR....",
+        "...BBBSSBS......",
+        "..BSBSSSBSB.....",
+        "..BSBSSSBSSS....",
+        "..BBSSSSBBBB....",
+        "....SSSSSSS.....",
+        "...RROOOORR.....",
+        "..RRROOOORRRR...",
+        "..RRRRYYRRRRR...",
+        "..SSROOOORSS....",
+        "..SSOOOOOOSS....",
+        "..OOOOOOOOOO....",
+        "...OO....OO.....",
+        "..BBB....BBB....",
+        ".BBBB....BBBB..."
+      ];
+
+      // Small Mario Run Frame 1
+      const smallRun1Grid = [
+        "....RRRRR.......",
+        "...RRRRRRRRR....",
+        "...BBBSSBS......",
+        "..BSBSSSBSB.....",
+        "..BSBSSSBSSS....",
+        "..BBSSSSBBBB....",
+        "....SSSSSSS.....",
+        "...RRRRRRRR.....",
+        "..SSROOOORRS....",
+        "..SSROYYOOSS....",
+        "...ROOOOOO......",
+        "...OOOOOOOO.....",
+        "..OOOO..OOOO....",
+        ".BBBB....BBB....",
+        ".BBB......BB....",
+        "................"
+      ];
+
+      // Small Mario Jump
+      const smallJumpGrid = [
+        "....RRRRR...SSS.",
+        "...RRRRRRRRRSSS.",
+        "...BBBSSBS..RRR.",
+        "..BSBSSSBSB.RRR.",
+        "..BSBSSSBSSSRRR.",
+        "..BBSSSSBBBBRR..",
+        "....SSSSSSSRRR..",
+        "..RRRRYYRRRR....",
+        ".RRRROOOORRR....",
+        "SS..OOOOOO......",
+        "SS.OOOOOOOOBB...",
+        "...OOOO..OOBBB..",
+        "..BBB......BBB..",
+        ".BBBB...........",
+        "................",
+        "................"
+      ];
+
+      // Big Mario Idle (16x32 compressed to 16x24 scaled cleanly to 32x56)
+      const bigIdleGrid = [
+        "....RRRRR.......",
+        "...RRRRRRRRR....",
+        "...BBBSSBS......",
+        "..BSBSSSBSB.....",
+        "..BSBSSSBSSS....",
+        "..BBSSSSBBBB....",
+        "....SSSSSSS.....",
+        "...RROOOORR.....",
+        "..RRROOOORRRR...",
+        ".RRRRROOOORRRR..",
+        ".SSRRROOOORRSS..",
+        ".SSSRYYOOYYRSS..",
+        ".SSROOOOOOOOSS..",
+        "...OOOOOOOOOO...",
+        "...OOOOOOOOOO...",
+        "..OOOOOOOOOOOO..",
+        "..OOOO....OOOO..",
+        "..OOOO....OOOO..",
+        "..BBBB....BBBB..",
+        ".BBBBBB..BBBBBB."
+      ];
+
+      const bigRunGrid = [
+        "....RRRRR.......",
+        "...RRRRRRRRR....",
+        "...BBBSSBS......",
+        "..BSBSSSBSB.....",
+        "..BSBSSSBSSS....",
+        "..BBSSSSBBBB....",
+        "....SSSSSSS.....",
+        "...RRRRRRRRR....",
+        "..SSROOOOOORRS..",
+        "..SSRYYOOYYRSS..",
+        "...ROOOOOOOO....",
+        "...OOOOOOOOOO...",
+        "..OOOOOOOOOOOO..",
+        "..OOOO....OOOO..",
+        ".BBBB......BBBB.",
+        ".BBBB.......BBB.",
+        "................",
+        "................",
+        "................",
+        "................"
+      ];
+
+      const bigJumpGrid = [
+        "....RRRRR...SSS.",
+        "...RRRRRRRRRSSS.",
+        "...BBBSSBS..RRR.",
+        "..BSBSSSBSB.RRR.",
+        "..BSBSSSBSSSRRR.",
+        "..BBSSSSBBBBRRR.",
+        "....SSSSSSSRRR..",
+        "..RRRROOOORRR...",
+        ".RRRRYYOOYYRR...",
+        "SS..OOOOOOOO....",
+        "SS.OOOOOOOOOO...",
+        "...OOOOOOOOOOOO.",
+        "..OOOO....OOOOBB",
+        "..BBB......BBBBB",
+        ".BBBB...........",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................"
+      ];
+
+      Sprites.marioSmall = {
+        idle: createPixelSprite(smallIdleGrid, palMarioNormal, 2),
+        run:  createPixelSprite(smallRun1Grid, palMarioNormal, 2),
+        jump: createPixelSprite(smallJumpGrid, palMarioNormal, 2)
+      };
+      Sprites.marioBig = {
+        idle: createPixelSprite(bigIdleGrid, palMarioNormal, 2.4),
+        run:  createPixelSprite(bigRunGrid, palMarioNormal, 2.4),
+        jump: createPixelSprite(bigJumpGrid, palMarioNormal, 2.4)
+      };
+      Sprites.marioFire = {
+        idle: createPixelSprite(bigIdleGrid, palMarioFire, 2.4),
+        run:  createPixelSprite(bigRunGrid, palMarioFire, 2.4),
+        jump: createPixelSprite(bigJumpGrid, palMarioFire, 2.4)
+      };
+
+      // Goomba (栗子怪)
+      const palGoomba = { 'B': '#ac5010', 'S': '#f8b878', 'K': '#000000', 'W': '#ffffff' };
+      const goomba1 = [
+        "......BBBB......",
+        "....BBBBBBBB....",
+        "...BBBBBBBBBB...",
+        "..BBBBBBBBBBBB..",
+        "..BBBWKBBKWBBB..",
+        ".BBBBWKBBKWBBBB.",
+        ".BBBBWKBBKWBBBB.",
+        "BBBBBBBBBBBBBBBB",
+        ".BBBBSSSSSSBBBB.",
+        "..BBBSSSSSSBBB..",
+        "....SSSSSSSS....",
+        "...KKSSSSSSKK...",
+        "..KKKK....KKKK..",
+        "..KKKK....KKKK..",
+        "................",
+        "................"
+      ];
+      const goomba2 = [
+        "......BBBB......",
+        "....BBBBBBBB....",
+        "...BBBBBBBBBB...",
+        "..BBBBBBBBBBBB..",
+        "..BBBWKBBKWBBB..",
+        ".BBBBWKBBKWBBBB.",
+        ".BBBBWKBBKWBBBB.",
+        "BBBBBBBBBBBBBBBB",
+        ".BBBBSSSSSSBBBB.",
+        "..BBBSSSSSSBBB..",
+        "....SSSSSSSS....",
+        "....KKSSSSKK....",
+        "...KKKK..KKKK...",
+        "....KK....KK....",
+        "................",
+        "................"
+      ];
+      const goombaFlat = [
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "....BBBBBBBB....",
+        "..BBBBBBBBBBBB..",
+        ".BBBWKBBBBKWBBB.",
+        "BBBBBBBBBBBBBBBB",
+        ".BBBBSSSSSSBBBB.",
+        "..KKKKKKKKKKKK..",
+        "................",
+        "................",
+        "................"
+      ];
+      Sprites.goomba = [
+        createPixelSprite(goomba1, palGoomba, 2),
+        createPixelSprite(goomba2, palGoomba, 2),
+        createPixelSprite(goombaFlat, palGoomba, 2)
+      ];
+
+      // Koopa Troopa (绿乌龟 & 龟壳)
+      const palKoopa = { 'G': '#00a800', 'Y': '#fca044', 'W': '#ffffff', 'K': '#000000' };
+      const koopaWalk = [
+        "..YYYY..........",
+        ".YYWKYY.........",
+        ".YYWKYYYY.......",
+        ".YYYYYYYY.......",
+        "...YYY.GGGGGG...",
+        "..YYYYGGGGGGGG..",
+        ".YYYYGGGGGGGGGG.",
+        "..YYGGGGGGGGGGG.",
+        "....GGGGGGGGGGGG",
+        "....GGGGGGGGGGG.",
+        "....WWWWWWWWWW..",
+        "...YYYY....YYYY.",
+        "..YYYY......YYYY",
+        "................",
+        "................",
+        "................"
+      ];
+      const koopaShell = [
+        "................",
+        "................",
+        "....GGGGGGGG....",
+        "..GGGGGGGGGGGG..",
+        ".GGGGWWWWWWGGGG.",
+        ".GGGWWWWWWWWGGG.",
+        "GGGGGGGGGGGGGGGG",
+        "GGGGGGGGGGGGGGGG",
+        "GGGGWWWWWWWWGGGG",
+        ".GGGWWWWWWWWGGG.",
+        "..WWWWWWWWWWWW..",
+        "....KKKKKKKK....",
+        "................",
+        "................",
+        "................",
+        "................"
+      ];
+      Sprites.koopa = {
+        walk: createPixelSprite(koopaWalk, palKoopa, 2),
+        shell: createPixelSprite(koopaShell, palKoopa, 2)
+      };
+
+      // Piranha Plant (食人花)
+      const palPlant = { 'R': '#e52521', 'W': '#ffffff', 'G': '#00a800', 'D': '#005800' };
+      const plantOpen = [
+        "....RRRRRRRR....",
+        "..RRRRWWWRRRRR..",
+        ".RRRRWWWWWRRRRR.",
+        ".RRWW..RR..WWRR.",
+        "RRR....RR....RRR",
+        "RRRRWWRRRRWWRRRR",
+        ".RRRRRRRRRRRRRR.",
+        "..RRRRRRRRRRRR..",
+        ".....GGGGGG.....",
+        "..GG.GGGGGG.GG..",
+        ".GGGGGGGGGGGGGG.",
+        "...GGGGGGGGGG...",
+        ".....GGGGGG.....",
+        ".....GGGGGG.....",
+        ".....GGGGGG.....",
+        ".....GGGGGG....."
+      ];
+      Sprites.plant = createPixelSprite(plantOpen, palPlant, 2);
+
+      // Powerups: Mushroom, 1UP, Fire Flower, Star
+      const mushroomGrid = [
+        ".....RRRRRR.....",
+        "...RRRRWWWRRR...",
+        "..RRRRWWWWWRRR..",
+        ".RRRRRWWWWWRRRR.",
+        ".RWWWRRRRRRWWWR.",
+        "RWWWWWRRRRRWWWWR",
+        "RWWWWWRRRRRWWWWR",
+        "RRRRRRRRRRRRRRRR",
+        "..BBBBSSSSBBBB..",
+        "..BBBSSSSSSBBB..",
+        "...BSSSSSSSSB...",
+        "...BSSSSSSSSB...",
+        "....SSSSSSSS....",
+        "................",
+        "................",
+        "................"
+      ];
+      Sprites.mushroom = createPixelSprite(mushroomGrid, { 'R': '#e52521', 'W': '#fca044', 'B': '#000000', 'S': '#fff4d6' }, 2);
+      Sprites.oneup = createPixelSprite(mushroomGrid, { 'R': '#00a800', 'W': '#ffffff', 'B': '#000000', 'S': '#fff4d6' }, 2);
+
+      const flowerGrid = [
+        "....RRRRRRRR....",
+        "..RRRRYYYYRRRR..",
+        ".RRRYYYYYYYYRRR.",
+        ".RRYYWWWWWWYYRR.",
+        ".RRYYWKWWKWYYRR.",
+        ".RRYYWWWWWWYYRR.",
+        "..RRRYYYYYYYYRR.",
+        "....RRRRRRRR....",
+        ".......GG.......",
+        "..GGG..GG..GGG..",
+        ".GGGGGGGGGGGGGG.",
+        "..GGG..GG..GGG..",
+        ".......GG.......",
+        "......GGGG......",
+        "................",
+        "................"
+      ];
+      Sprites.flower = createPixelSprite(flowerGrid, { 'R': '#e52521', 'Y': '#fbd000', 'W': '#ffffff', 'K': '#000000', 'G': '#00a800' }, 2);
+
+      const starGrid = [
+        ".......YY.......",
+        "......YYYY......",
+        "......YYYY......",
+        ".....YYYYYY.....",
+        "YYYYYYYYYYYYYYYY",
+        ".YYYYYYYYYYYYYY.",
+        "..YYYYKYYKYYYY..",
+        "...YYYKYYKYYY...",
+        "...YYYYYYYYYY...",
+        "..YYYYYYYYYYYY..",
+        "..YYYY....YYYY..",
+        ".YYYY......YYYY.",
+        ".YY..........YY.",
+        "................",
+        "................",
+        "................"
+      ];
+      Sprites.star = createPixelSprite(starGrid, { 'Y': '#fbd000', 'K': '#000000' }, 2);
+    }
+
+    buildAllSprites();
+
+    /*************************************************************************
+     * 3. STAGE BUILDER (World 1-1 Overworld, 1-2 Underground, 1-3 Castle)
+     *************************************************************************/
+    // Tile types:
+    // 'G': Ground stone, 'B': Brick, '?': Question coin, 'M': Question Mushroom/Flower,
+    // 'S': Question Star, 'L': Hidden 1-UP block, 'C': Multi-coin Brick, 'H': Hard stair block,
+    // 'P': Pipe body, 'T': Pipe top, 'W': Warp Pipe Top (Down to secret room),
+    // 'A': Bridge Axe (World 1-3), 'V': Lava, 'F': Bridge chain tile
+
+    function createStageData(stageNum) {
+      const rows = 15; // 15 * 32 = 480px height
+      const cols = stageNum === 1 ? 210 : (stageNum === 2 ? 175 : 155);
+      const grid = Array.from({ length: rows }, () => Array(cols).fill('.'));
+      const entities = [];
+      const blocksMeta = {}; // key "r,c" -> { type, content, hitsLeft, bumpY, revealed }
+
+      const setTile = (r, c, t, meta = null) => {
+        if (r >= 0 && r < rows && c >= 0 && c < cols) {
+          grid[r][c] = t;
+          if (meta) blocksMeta[`${r},${c}`] = { ...meta, bumpY: 0 };
+        }
+      };
+
+      const addPipe = (col, heightTiles, hasPlant = false, isSecretWarp = false) => {
+        const topRow = 13 - heightTiles;
+        setTile(topRow, col, isSecretWarp ? 'W' : 'T', { isPipeLeft: true, isSecretWarp });
+        setTile(topRow, col + 1, isSecretWarp ? 'W' : 'T', { isPipeRight: true, isSecretWarp });
+        for (let r = topRow + 1; r <= 12; r++) {
+          setTile(r, col, 'P', { isPipeLeft: true });
+          setTile(r, col + 1, 'P', { isPipeRight: true });
+        }
+        if (hasPlant) {
+          entities.push({
+            type: 'plant',
+            x: col * TILE + 16,
+            baseY: topRow * TILE,
+            y: topRow * TILE + 24,
+            timer: 0,
+            alive: true
+          });
+        }
+      };
+
+      const addStairs = (startCol, maxSteps, dir = 1) => {
+        for (let s = 0; s < maxSteps; s++) {
+          const c = dir === 1 ? startCol + s : startCol + (maxSteps - 1 - s);
+          for (let h = 0; h <= s; h++) {
+            setTile(12 - h, c, 'H');
+          }
+        }
+      };
+
+      if (stageNum === 1) {
+        // WORLD 1-1: Classic Overworld
+        const pits = new Set([68, 69, 85, 86, 87, 152, 153]);
+        for (let c = 0; c < cols; c++) {
+          if (!pits.has(c)) {
+            setTile(13, c, 'G');
+            setTile(14, c, 'G');
+          }
+        }
+
+        // Opening iconic blocks
+        setTile(9, 16, '?', { content: 'coin' });
+        setTile(9, 20, 'B', { content: 'empty' });
+        setTile(9, 21, '?', { content: 'powerup' }); // First Mushroom / Flower!
+        setTile(9, 22, 'B', { content: 'empty' });
+        setTile(9, 23, '?', { content: 'coin' });
+        setTile(9, 24, 'B', { content: 'empty' });
+        setTile(5, 22, '?', { content: 'coin' });
+
+        // Classic Pipes
+        addPipe(28, 2, false, false);
+        addPipe(38, 3, true, false);
+        addPipe(46, 4, true, false);
+        addPipe(57, 4, false, true); // Pipe #4: Secret Warp Pipe (Press Down!)
+
+        // Classic Hidden 1-UP block before first pit!
+        setTile(8, 64, 'L', { content: '1up', hidden: true });
+
+        // Post-pit section
+        setTile(9, 77, 'B', { content: 'empty' });
+        setTile(9, 78, '?', { content: 'powerup' });
+        setTile(9, 79, 'B', { content: 'empty' });
+
+        // High brick walkway
+        for (let c = 80; c <= 87; c++) setTile(5, c, 'B', { content: 'empty' });
+        for (let c = 91; c <= 93; c++) setTile(5, c, 'B', { content: 'empty' });
+        setTile(5, 94, '?', { content: 'coin' });
+        setTile(9, 94, 'B', { content: 'multicoin', hitsLeft: 6 }); // Multi-coin brick!
+
+        // Super Star Block!
+        setTile(9, 100, 'B', { content: 'empty' });
+        setTile(9, 101, '?', { content: 'star' });
+
+        // Question triangle
+        setTile(9, 106, '?', { content: 'coin' });
+        setTile(9, 109, '?', { content: 'coin' });
+        setTile(5, 109, '?', { content: 'powerup' });
+        setTile(9, 112, '?', { content: 'coin' });
+
+        // Mid bricks
+        setTile(9, 118, 'B', { content: 'empty' });
+        for (let c = 121; c <= 123; c++) setTile(5, c, 'B', { content: 'empty' });
+
+        // Staircases
+        addStairs(134, 4, 1);
+        addStairs(140, 4, -1);
+
+        addStairs(148, 4, 1);
+        setTile(12, 151, 'H');
+        addStairs(154, 4, -1);
+
+        // Return pipe from secret room
+        addPipe(163, 2, false, false);
+
+        setTile(9, 168, 'B', { content: 'empty' });
+        setTile(9, 169, 'B', { content: 'empty' });
+        setTile(9, 170, '?', { content: 'coin' });
+        setTile(9, 171, 'B', { content: 'empty' });
+
+        addPipe(179, 2, false, false);
+
+        // Final 8-step staircase to flagpole
+        for (let s = 0; s < 8; s++) {
+          for (let h = 0; h <= s; h++) {
+            setTile(12 - h, 182 + s, 'H');
+          }
+        }
+        for (let h = 0; h < 8; h++) setTile(12 - h, 190, 'H');
+
+        // Enemies for World 1-1 (Authentic NES speed: ~0.75px/frame at 2x scale)
+        const goombaCols = [22, 41, 52, 54, 81, 83, 97, 99, 114, 116, 125, 127, 173, 175];
+        goombaCols.forEach(c => {
+          entities.push({ type: 'goomba', x: c * TILE, y: 12 * TILE, vx: -0.75, vy: 0, alive: true, state: 'walk', frame: 0 });
+        });
+        const koopaCols = [61, 107, 166];
+        koopaCols.forEach(c => {
+          entities.push({ type: 'koopa', x: c * TILE, y: 12 * TILE - 8, vx: -0.8, vy: 0, alive: true, state: 'walk', frame: 0 });
+        });
+
+        return {
+          theme: 'overworld',
+          name: '1-1',
+          cols,
+          rows,
+          grid,
+          blocksMeta,
+          entities,
+          flagCol: 198,
+          castleCol: 202
+        };
+      }
+
+      if (stageNum === 2) {
+        // WORLD 1-2: Classic Underground Cavern
+        const pits = new Set([52, 53, 54, 98, 99, 128, 129, 130]);
+        for (let c = 0; c < cols; c++) {
+          if (!pits.has(c)) {
+            setTile(13, c, 'G');
+            setTile(14, c, 'G');
+          }
+          if (c >= 6 && c < cols - 22) {
+            setTile(1, c, 'B', { content: 'empty' });
+          }
+        }
+
+        // Opening powerup & coin row
+        setTile(9, 10, '?', { content: 'powerup' });
+        for (let c = 11; c <= 14; c++) setTile(9, c, '?', { content: 'coin' });
+
+        // Underground brick formations
+        for (let s = 0; s < 4; s++) {
+          setTile(12 - s, 20 + s * 2, 'H');
+        }
+
+        for (let c = 32; c <= 42; c++) {
+          setTile(8, c, c === 37 ? '?' : 'B', { content: c === 37 ? 'star' : 'empty' });
+        }
+        // Floating coins above brick platform
+        for (let c = 34; c <= 40; c++) {
+          entities.push({ type: 'static_coin', x: c * TILE + 6, y: 6 * TILE + 4, collected: false });
+        }
+
+        // Bridge over first pit
+        for (let c = 51; c <= 55; c++) setTile(7, c, 'B', { content: 'empty' });
+        setTile(7, 53, '?', { content: 'powerup' });
+
+        // Underground pipes with Piranha plants
+        addPipe(65, 3, true, false);
+        addPipe(74, 4, true, false);
+        addPipe(83, 2, false, false);
+
+        // Multi-tier brick maze
+        for (let c = 90; c <= 96; c++) {
+          setTile(9, c, 'B', { content: c === 93 ? 'multicoin' : 'empty', hitsLeft: 5 });
+          setTile(5, c, 'B', { content: 'empty' });
+        }
+        setTile(5, 95, '?', { content: '1up' });
+
+        // Platform steps across second pit
+        setTile(10, 98, 'H');
+        setTile(8, 100, 'H');
+
+        // Pipe cluster
+        addPipe(110, 3, true, false);
+        addPipe(118, 4, true, false);
+
+        // Final staircase
+        for (let s = 0; s < 7; s++) {
+          for (let h = 0; h <= s; h++) {
+            setTile(12 - h, 145 + s, 'H');
+          }
+        }
+        for (let h = 0; h < 7; h++) setTile(12 - h, 152, 'H');
+
+        const goombaCols = [18, 29, 44, 46, 61, 70, 88, 92, 105, 115, 136, 138];
+        goombaCols.forEach(c => {
+          entities.push({ type: 'goomba', x: c * TILE, y: 12 * TILE, vx: -0.75, vy: 0, alive: true, state: 'walk', frame: 0 });
+        });
+        const koopaCols = [38, 79, 103, 124, 141];
+        koopaCols.forEach(c => {
+          entities.push({ type: 'koopa', x: c * TILE, y: 12 * TILE - 8, vx: -0.8, vy: 0, alive: true, state: 'walk', frame: 0 });
+        });
+
+        return {
+          theme: 'underground',
+          name: '1-2',
+          cols,
+          rows,
+          grid,
+          blocksMeta,
+          entities,
+          flagCol: 160,
+          castleCol: 164
+        };
+      }
+
+      // WORLD 1-3: Bowser's Lava Castle Showdown
+      const lavaPits = new Set([
+        22, 23, 24,
+        44, 45, 46, 47,
+        74, 75, 76,
+        98, 99, 100,
+        // Bowser's Bridge spans cols 118..130 over lava!
+        118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130
+      ]);
+
+      for (let c = 0; c < cols; c++) {
+        if (c < 140) {
+          setTile(1, c, 'H');
+          setTile(2, c, 'H');
+        }
+        if (lavaPits.has(c)) {
+          setTile(13, c, 'V');
+          setTile(14, c, 'V');
+        } else {
+          setTile(13, c, 'G');
+          setTile(14, c, 'G');
+        }
+      }
+
+      // Castle entrance steps
+      addStairs(4, 3, 1);
+
+      // Powerup before first lava gap
+      setTile(9, 15, '?', { content: 'powerup' });
+      setTile(9, 16, '?', { content: 'coin' });
+
+      // Stepping blocks over lava
+      setTile(10, 23, 'H');
+      setTile(9, 45, 'H');
+      setTile(9, 46, 'H');
+
+      // Mid-castle supply
+      setTile(8, 60, 'B', { content: 'empty' });
+      setTile(8, 61, '?', { content: 'powerup' });
+      setTile(8, 62, '?', { content: 'star' });
+      setTile(8, 63, 'B', { content: 'empty' });
+
+      setTile(10, 75, 'H');
+      setTile(10, 99, 'H');
+
+      // Bowser's Bridge (Cols 118..130 at Row 10)
+      for (let c = 118; c <= 130; c++) {
+        setTile(10, c, 'F'); // Bridge segments that collapse when Axe is touched!
+      }
+      // Upper blocks above bridge so player can jump over Bowser
+      for (let c = 120; c <= 126; c += 2) {
+        setTile(6, c, 'H');
+      }
+      // Golden Axe at the end of the bridge (Col 131, Row 9)
+      setTile(9, 131, 'A');
+
+      // Enemies + Bowser
+      [19, 34, 54, 68, 86, 92, 108].forEach(c => {
+        entities.push({ type: 'goomba', x: c * TILE, y: 12 * TILE, vx: -0.8, vy: 0, alive: true, state: 'walk', frame: 0 });
+      });
+      [39, 82, 112].forEach(c => {
+        entities.push({ type: 'koopa', x: c * TILE, y: 12 * TILE - 8, vx: -0.85, vy: 0, alive: true, state: 'walk', frame: 0 });
+      });
+
+      // Bowser Boss on the bridge!
+      entities.push({
+        type: 'bowser',
+        x: 125 * TILE,
+        y: 8 * TILE,
+        vx: -0.6,
+        vy: 0,
+        hp: 5,
+        alive: true,
+        timer: 0,
+        minX: 119 * TILE,
+        maxX: 128 * TILE
+      });
+
+      return {
+        theme: 'castle',
+        name: '1-3',
+        cols,
+        rows,
+        grid,
+        blocksMeta,
+        entities,
+        flagCol: 142,
+        castleCol: 146
+      };
+    }
+
+    // Secret Bonus Coin Room (Accessible from World 1-1 Pipe #4)
+    function createBonusRoomData() {
+      const rows = 15;
+      const cols = 26;
+      const grid = Array.from({ length: rows }, () => Array(cols).fill('.'));
+      for (let c = 0; c < cols; c++) {
+        grid[13][c] = 'G';
+        grid[14][c] = 'G';
+        grid[1][c] = 'B';
+      }
+      for (let r = 1; r < 13; r++) {
+        grid[r][0] = 'B';
+        grid[r][1] = 'B';
+      }
+      // Coin platform
+      for (let c = 6; c <= 16; c++) {
+        grid[10][c] = 'B';
+      }
+      // Exit pipe on the right
+      grid[11][21] = 'E'; // Exit warp pipe
+      grid[12][21] = 'E';
+      grid[11][22] = 'P';
+      grid[12][22] = 'P';
+      for (let r = 2; r <= 10; r++) {
+        grid[r][22] = 'P';
+        grid[r][23] = 'P';
+      }
+
+      const coins = [];
+      for (let r = 5; r <= 8; r++) {
+        for (let c = 7; c <= 15; c++) {
+          coins.push({ type: 'static_coin', x: c * TILE + 6, y: r * TILE + 4, collected: false });
+        }
+      }
+      return { grid, coins, cols, rows };
+    }
+
+    /*************************************************************************
+     * 4. MAIN GAME ENGINE
+     *************************************************************************/
+    class SuperMarioGame {
+      constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.ctx.imageSmoothingEnabled = false;
+
+        this.width = canvas.width;
+        this.height = canvas.height;
+
+        this.state = 'title'; // 'title', 'playing', 'paused', 'dying', 'flagpole', 'gameover', 'victory'
+        this.stageNum = 1;
+        this.inBonusRoom = false;
+
+        this.score = 0;
+        this.highScore = this.loadHighScore();
+        this.coins = 0;
+        this.lives = 3;
+        this.timeLeft = 400;
+        this.timeTick = 0;
+        this.frameTick = 0;
+
+        this.keys = { left: false, right: false, down: false, jump: false, run: false };
+        this.jumpReleased = true;
+        this.fireReleased = true;
+
+        this.particles = [];
+        this.floatingTexts = [];
+        this.items = [];
+        this.fireballs = [];
+        this.bowserFires = [];
+
+        this.loadStage(1, true);
+      }
+
+      loadHighScore() {
+        try {
+          return parseInt(localStorage.getItem('smb_classic_high_score') || '10000', 10);
+        } catch (e) {
+          return 10000;
+        }
+      }
+
+      saveHighScore() {
+        if (this.score > this.highScore) {
+          this.highScore = this.score;
+          try {
+            localStorage.setItem('smb_classic_high_score', String(this.highScore));
+          } catch (e) {}
+        }
+      }
+
+      getDesiredTrack() {
+        if (this.player && this.player.starTimer > 0) return 'star';
+        if (this.inBonusRoom) return 'underground';
+        return this.stage.theme;
+      }
+
+      loadStage(stageNum, resetMarioPower = false) {
+        this.stageNum = stageNum;
+        this.inBonusRoom = false;
+        this.stage = createStageData(stageNum);
+        this.bonusRoom = createBonusRoomData();
+        this.timeLeft = 400;
+        this.timeTick = 0;
+        this.cameraX = 0;
+        this.flagY = 3 * TILE;
+
+        const prevPower = (!resetMarioPower && this.player) ? this.player.power : 0; // 0: Small, 1: Big, 2: Fire
+        this.player = {
+          x: 3 * TILE,
+          y: 11 * TILE,
+          vx: 0,
+          vy: 0,
+          dir: 1,
+          power: prevPower,
+          onGround: false,
+          crouching: false,
+          jumpHoldTimer: 0,
+          invincibleTimer: 0,
+          starTimer: 0,
+          animFrame: 0,
+          animTick: 0
+        };
+
+        this.items = [];
+        this.fireballs = [];
+        this.bowserFires = [];
+        this.particles = [];
+        this.floatingTexts = [];
+
+        this.updateUIStageButtons();
+        this.updateFormBadge();
+      }
+
+      enterBonusRoom() {
+        sound.sfxPipe();
+        this.inBonusRoom = true;
+        this.cameraX = 0;
+        this.player.x = 3 * TILE;
+        this.player.y = 2 * TILE;
+        this.player.vx = 0;
+        this.player.vy = 0;
+        sound.startBGM('underground');
+        document.getElementById('status-tip-text').textContent = '🎉 已进入地下秘密金币室！向右走入横管即可返回地上！';
+      }
+
+      exitBonusRoom() {
+        sound.sfxPipe();
+        this.inBonusRoom = false;
+        // Emerge at pipe at col 163 in World 1-1
+        this.player.x = 163.5 * TILE;
+        this.player.y = 9 * TILE;
+        this.player.vx = 0;
+        this.player.vy = 0;
+        this.cameraX = Math.max(0, this.player.x - 220);
+        sound.startBGM(this.getDesiredTrack());
+        document.getElementById('status-tip-text').textContent = '✨ 已从秘密水管返回终点前！冲向旗杆夺取高分吧！';
+      }
+
+      updateUIStageButtons() {
+        [1, 2, 3].forEach(n => {
+          const btn = document.getElementById(`btn-stage-${n}`);
+          if (!btn) return;
+          if (n === this.stageNum) {
+            btn.className = 'px-2.5 py-1 text-xs font-bold rounded-md bg-red-600 text-white transition';
+          } else {
+            btn.className = 'px-2.5 py-1 text-xs font-bold rounded-md text-slate-300 hover:text-white transition';
+          }
+        });
+      }
+
+      updateFormBadge() {
+        const badge = document.getElementById('status-form-badge');
+        if (!badge || !this.player) return;
+        if (this.player.starTimer > 0) {
+          badge.textContent = '⭐ 无敌玛丽';
+          badge.className = 'px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-300 font-bold border border-yellow-400/40';
+        } else if (this.player.power === 2) {
+          badge.textContent = '🌺 火焰玛丽';
+          badge.className = 'px-2 py-0.5 rounded bg-red-500/20 text-red-300 font-bold border border-red-400/40';
+        } else if (this.player.power === 1) {
+          badge.textContent = '🍄 超级玛丽';
+          badge.className = 'px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/40';
+        } else {
+          badge.textContent = '🧢 小玛丽';
+          badge.className = 'px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-bold';
+        }
+      }
+
+      addScore(pts, x, y, customLabel = null) {
+        this.score += pts;
+        this.saveHighScore();
+        if (x !== undefined && y !== undefined) {
+          this.floatingTexts.push({
+            text: customLabel || String(pts),
+            x,
+            y,
+            vy: -1.4,
+            life: 42,
+            color: customLabel === '1UP' ? '#4ade80' : '#fde047'
+          });
+        }
+      }
+
+      addCoin(x, y) {
+        this.coins++;
+        sound.sfxCoin();
+        this.addScore(200, x, y);
+        if (this.coins >= 100) {
+          this.coins -= 100;
+          this.lives++;
+          sound.sfxOneUp();
+          this.addScore(0, x, y - 16, '1UP');
+        }
+      }
+
+      getActiveGrid() {
+        return this.inBonusRoom ? this.bonusRoom.grid : this.stage.grid;
+      }
+
+      isSolidTile(r, c, vy = 0, ignoreHidden = true) {
+        const grid = this.getActiveGrid();
+        if (r < 0) return false;
+        if (r >= grid.length || c < 0 || c >= grid[0].length) return false;
+        const t = grid[r][c];
+        if (t === '.' || t === 'V' || t === 'A') return false;
+        if (t === 'L' && !this.inBonusRoom) {
+          const meta = this.stage.blocksMeta[`${r},${c}`];
+          if (meta && meta.hidden && ignoreHidden) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      triggerBlockHit(r, c) {
+        if (this.inBonusRoom) return;
+        const grid = this.stage.grid;
+        const t = grid[r][c];
+        const key = `${r},${c}`;
+        const meta = this.stage.blocksMeta[key] || { content: 'empty', bumpY: 0 };
+        this.stage.blocksMeta[key] = meta;
+
+        const worldX = c * TILE;
+        const worldY = r * TILE;
+
+        // Check if any enemy is standing right on top of this block and knock them out!
+        this.stage.entities.forEach(en => {
+          if (!en.alive || en.type === 'plant' || en.type === 'static_coin') return;
+          const exCenter = en.x + 16;
+          const eyBottom = en.y + 32;
+          if (exCenter >= worldX - 8 && exCenter <= worldX + TILE + 8 && Math.abs(eyBottom - worldY) <= 10) {
+            en.alive = false;
+            en.state = 'flipped';
+            en.vy = -6;
+            sound.sfxKick();
+            this.addScore(200, en.x, en.y);
+          }
+        });
+
+        if (t === 'H' || t === 'E') {
+          sound.sfxBump();
+          return;
+        }
+
+        // Hidden 1-UP block
+        if (t === 'L') {
+          meta.hidden = false;
+          grid[r][c] = 'H';
+          meta.bumpY = -8;
+          sound.sfxPowerupAppear();
+          this.items.push({
+            type: '1up',
+            x: worldX,
+            y: worldY - 4,
+            targetY: worldY - TILE,
+            emerging: true,
+            vx: 0.95,
+            vy: 0
+          });
+          return;
+        }
+
+        if (t === '?') {
+          grid[r][c] = 'H';
+          meta.bumpY = -8;
+          if (meta.content === 'coin') {
+            this.addCoin(worldX + 6, worldY - 16);
+            this.particles.push({
+              type: 'coin_pop',
+              x: worldX + 8,
+              y: worldY - 8,
+              vy: -7.5,
+              life: 24
+            });
+          } else if (meta.content === 'powerup') {
+            sound.sfxPowerupAppear();
+            const itemType = this.player.power === 0 ? 'mushroom' : 'flower';
+            this.items.push({
+              type: itemType,
+              x: worldX,
+              y: worldY - 4,
+              targetY: worldY - TILE,
+              emerging: true,
+              vx: itemType === 'mushroom' ? 0.95 : 0,
+              vy: 0
+            });
+          } else if (meta.content === 'star') {
+            sound.sfxPowerupAppear();
+            this.items.push({
+              type: 'star',
+              x: worldX,
+              y: worldY - 4,
+              targetY: worldY - TILE,
+              emerging: true,
+              vx: 1.25,
+              vy: -4.5
+            });
+          } else if (meta.content === '1up') {
+            sound.sfxPowerupAppear();
+            this.items.push({
+              type: '1up',
+              x: worldX,
+              y: worldY - 4,
+              targetY: worldY - TILE,
+              emerging: true,
+              vx: 1.4,
+              vy: 0
+            });
+          }
+          return;
+        }
+
+        if (t === 'B') {
+          if (meta.content === 'multicoin' && meta.hitsLeft > 0) {
+            meta.hitsLeft--;
+            meta.bumpY = -8;
+            this.addCoin(worldX + 6, worldY - 16);
+            this.particles.push({
+              type: 'coin_pop',
+              x: worldX + 8,
+              y: worldY - 8,
+              vy: -7.5,
+              life: 24
+            });
+            if (meta.hitsLeft <= 0) {
+              grid[r][c] = 'H';
+            }
+            return;
+          }
+
+          if (this.player.power > 0) {
+            // Shatter brick!
+            grid[r][c] = '.';
+            sound.sfxBreakBrick();
+            this.addScore(50);
+            const speeds = [[-3, -7], [3, -7], [-2.2, -4.5], [2.2, -4.5]];
+            speeds.forEach(([vx, vy]) => {
+              this.particles.push({
+                type: 'brick',
+                x: worldX + 12,
+                y: worldY + 12,
+                vx,
+                vy,
+                life: 45
+              });
+            });
+          } else {
+            meta.bumpY = -7;
+            sound.sfxBump();
+          }
+        }
+      }
+
+      shootFireball() {
+        if (this.player.power !== 2 || this.fireballs.length >= 2) return;
+        sound.sfxFireball();
+        const pHeight = this.player.power > 0 ? 52 : 32;
+        this.fireballs.push({
+          x: this.player.dir === 1 ? this.player.x + 26 : this.player.x - 10,
+          y: this.player.y + pHeight * 0.4,
+          vx: this.player.dir * 5.2,
+          vy: 2.2,
+          life: 180
+        });
+      }
+
+      hurtPlayer() {
+        if (this.player.invincibleTimer > 0 || this.player.starTimer > 0) return;
+        if (this.player.power > 0) {
+          this.player.power = 0;
+          this.player.invincibleTimer = 110;
+          sound.sfxPipe();
+          this.updateFormBadge();
+        } else {
+          this.killPlayer();
+        }
+      }
+
+      killPlayer() {
+        if (this.state === 'dying') return;
+        this.state = 'dying';
+        this.player.vy = -9.5;
+        this.player.vx = 0;
+        this.lives--;
+        sound.sfxDie();
+        this.dyingTimer = 110;
+      }
+
+      triggerBridgeCollapse() {
+        // Bowser's Axe touched! Collapse bridge tiles and drop Bowser into lava!
+        sound.sfxStageClear();
+        const grid = this.stage.grid;
+        for (let c = 118; c <= 131; c++) {
+          grid[10][c] = '.';
+          grid[9][c] = '.';
+        }
+        this.stage.entities.forEach(en => {
+          if (en.type === 'bowser' && en.alive) {
+            en.alive = false;
+            this.addScore(5000, en.x, en.y, '5000!');
+          }
+        });
+      }
+
+      triggerFlagpole(isAxeVictory = false) {
+        if (this.state === 'flagpole') return;
+        this.state = 'flagpole';
+        this.player.vx = 0;
+        this.player.vy = 2.5;
+        if (!isAxeVictory) {
+          sound.sfxFlagpole();
+          const heightBonus = Math.max(100, Math.floor((12 * TILE - this.player.y) / TILE) * 400);
+          this.addScore(heightBonus, this.player.x, this.player.y);
+        }
+        const timeBonus = this.timeLeft * 10;
+        this.addScore(timeBonus, this.player.x, this.player.y - 24, `+${timeBonus}`);
+        this.flagpoleTimer = 120;
+      }
+
+      update() {
+        this.frameTick++;
+        if (this.state === 'dying') {
+          this.player.y += this.player.vy;
+          this.player.vy += 0.42;
+          this.dyingTimer--;
+          if (this.dyingTimer <= 0) {
+            if (this.lives > 0) {
+              this.loadStage(this.stageNum, true);
+              this.state = 'playing';
+              sound.startBGM(this.getDesiredTrack());
+            } else {
+              this.state = 'gameover';
+              showOverlay(
+                'GAME OVER',
+                `最终得分：${this.score} 分 | 最高纪录：${this.highScore} 分。准备好再次挑战了吗？`,
+                '▶ 重新开始挑战'
+              );
+            }
+          }
+          return;
+        }
+
+        if (this.state === 'flagpole') {
+          const groundY = 12 * TILE - (this.player.power > 0 ? 52 : 32);
+          if (this.player.y < groundY) {
+            this.player.y = Math.min(groundY, this.player.y + 3.2);
+          }
+          if (this.flagY < 11 * TILE) {
+            this.flagY = Math.min(11 * TILE, this.flagY + 3.6);
+          }
+          if (this.flagpoleTimer === 85) {
+            sound.sfxStageClear();
+          }
+          if (this.flagpoleTimer < 80) {
+            this.player.dir = 1;
+            this.player.x += 2.2;
+            this.player.animTick++;
+          }
+          this.flagpoleTimer--;
+          if (this.flagpoleTimer <= 0) {
+            if (this.stageNum < 3) {
+              this.loadStage(this.stageNum + 1, false);
+              this.state = 'playing';
+              sound.startBGM(this.getDesiredTrack());
+            } else {
+              this.state = 'victory';
+              showOverlay(
+                '🏆 恭喜通关！',
+                `你成功击败了库巴并通关全部经典世界！总得分：${this.score} 分（最高纪录：${this.highScore} 分）`,
+                '▶ 再次游玩 1-1'
+              );
+            }
+          }
+          return;
+        }
+
+        if (this.state !== 'playing') return;
+
+        // Timer countdown
+        this.timeTick++;
+        if (this.timeTick >= 28) {
+          this.timeTick = 0;
+          this.timeLeft = Math.max(0, this.timeLeft - 1);
+          if (this.timeLeft === 0) {
+            this.killPlayer();
+            return;
+          }
+        }
+
+        // Update player timers
+        if (this.player.invincibleTimer > 0) this.player.invincibleTimer--;
+        if (this.player.starTimer > 0) {
+          this.player.starTimer--;
+          if (this.player.starTimer === 0) {
+            this.updateFormBadge();
+            sound.startBGM(this.getDesiredTrack());
+          }
+        }
+
+        // Decay block bump animations
+        Object.values(this.stage.blocksMeta).forEach(meta => {
+          if (meta.bumpY < 0) meta.bumpY = Math.min(0, meta.bumpY + 1.5);
+        });
+
+        this.updatePlayerPhysics();
+        this.updateItems();
+        this.updateFireballs();
+        this.updateEnemies();
+        this.updateParticles();
+      }
+
+      updatePlayerPhysics() {
+        const p = this.player;
+        const pWidth = 24;
+        const pHeight = p.power > 0 ? 52 : 32;
+
+        // Horizontal movement calibrated to original NES Super Mario Bros. (Walk ~2.15, Run ~3.4 at 60fps)
+        const maxSpeed = this.keys.run ? 3.4 : 2.15;
+        const accel = p.onGround ? (this.keys.run ? 0.13 : 0.095) : 0.065;
+        const friction = p.onGround ? 0.88 : 0.96;
+
+        p.crouching = p.onGround && this.keys.down && p.power > 0;
+
+        if (!p.crouching) {
+          if (this.keys.left) {
+            // Apply slight turn-around skid resistance when reversing direction on ground
+            const stepAccel = (p.onGround && p.vx > 0.4) ? accel * 1.65 : accel;
+            p.vx = Math.max(-maxSpeed, p.vx - stepAccel);
+            p.dir = -1;
+          } else if (this.keys.right) {
+            const stepAccel = (p.onGround && p.vx < -0.4) ? accel * 1.65 : accel;
+            p.vx = Math.min(maxSpeed, p.vx + stepAccel);
+            p.dir = 1;
+          } else {
+            p.vx *= friction;
+            if (Math.abs(p.vx) < 0.05) p.vx = 0;
+          }
+        } else {
+          p.vx *= 0.85;
+          if (Math.abs(p.vx) < 0.05) p.vx = 0;
+        }
+
+        // Secret Warp Pipe check (Press Down on World 1-1 Pipe #4 at cols 57-58, row 9)
+        if (!this.inBonusRoom && this.stageNum === 1 && p.onGround && this.keys.down) {
+          const centerCol = Math.floor((p.x + pWidth / 2) / TILE);
+          const footRow = Math.floor((p.y + pHeight + 2) / TILE);
+          if ((centerCol === 57 || centerCol === 58) && footRow === 9) {
+            this.enterBonusRoom();
+            return;
+          }
+        }
+
+        // Fireball input
+        if (this.keys.run && this.fireReleased) {
+          this.shootFireball();
+          this.fireReleased = false;
+        }
+        if (!this.keys.run) {
+          this.fireReleased = true;
+        }
+
+        // Variable Jump Physics calibrated to NES SMB (~2.3 tiles tap hop, ~4.9 tiles full hold jump)
+        if (this.keys.jump && p.onGround && this.jumpReleased) {
+          const speedBoost = Math.abs(p.vx) > 2.6 ? 0.45 : 0;
+          p.vy = -7.55 - speedBoost;
+          p.onGround = false;
+          p.jumpHoldTimer = 15;
+          this.jumpReleased = false;
+          sound.sfxJump(p.power > 0);
+        }
+        if (this.keys.jump && p.jumpHoldTimer > 0 && p.vy < 0) {
+          p.vy -= 0.29;
+          p.jumpHoldTimer--;
+        } else {
+          p.jumpHoldTimer = 0;
+        }
+        if (!this.keys.jump) {
+          this.jumpReleased = true;
+        }
+
+        // Gravity
+        p.vy = Math.min(8.2, p.vy + 0.38);
+
+        // Apply Horizontal & Collide
+        p.x += p.vx;
+        if (p.x < this.cameraX) {
+          p.x = this.cameraX;
+          p.vx = 0;
+        }
+
+        const topRow = Math.floor((p.y + 4) / TILE);
+        const midRow = Math.floor((p.y + pHeight / 2) / TILE);
+        const botRow = Math.floor((p.y + pHeight - 4) / TILE);
+
+        if (p.vx > 0) {
+          const rightCol = Math.floor((p.x + pWidth) / TILE);
+          // Check exit pipe in bonus room
+          if (this.inBonusRoom && this.bonusRoom.grid[botRow] && this.bonusRoom.grid[botRow][rightCol] === 'E') {
+            this.exitBonusRoom();
+            return;
+          }
+          if (
+            this.isSolidTile(topRow, rightCol) ||
+            this.isSolidTile(midRow, rightCol) ||
+            this.isSolidTile(botRow, rightCol)
+          ) {
+            p.x = rightCol * TILE - pWidth - 0.01;
+            p.vx = 0;
+          }
+        } else if (p.vx < 0) {
+          const leftCol = Math.floor(p.x / TILE);
+          if (
+            this.isSolidTile(topRow, leftCol) ||
+            this.isSolidTile(midRow, leftCol) ||
+            this.isSolidTile(botRow, leftCol)
+          ) {
+            p.x = (leftCol + 1) * TILE + 0.01;
+            p.vx = 0;
+          }
+        }
+
+        // Apply Vertical & Collide
+        p.y += p.vy;
+        p.onGround = false;
+
+        const leftCol = Math.floor((p.x + 3) / TILE);
+        const rightCol = Math.floor((p.x + pWidth - 3) / TILE);
+        const centerCol = Math.floor((p.x + pWidth / 2) / TILE);
+
+        if (p.vy < 0) {
+          // Moving Up -> Check ceiling / hidden blocks
+          const headRow = Math.floor(p.y / TILE);
+          const hitCenter = this.isSolidTile(headRow, centerCol, p.vy, false);
+          const hitLeft = this.isSolidTile(headRow, leftCol, p.vy, false);
+          const hitRight = this.isSolidTile(headRow, rightCol, p.vy, false);
+
+          if (hitCenter || hitLeft || hitRight) {
+            const targetCol = hitCenter ? centerCol : (hitLeft ? leftCol : rightCol);
+            p.y = (headRow + 1) * TILE;
+            p.vy = 0;
+            p.jumpHoldTimer = 0;
+            this.triggerBlockHit(headRow, targetCol);
+          }
+        } else if (p.vy >= 0) {
+          // Moving Down -> Check ground
+          const footRow = Math.floor((p.y + pHeight) / TILE);
+          if (this.isSolidTile(footRow, leftCol) || this.isSolidTile(footRow, rightCol)) {
+            p.y = footRow * TILE - pHeight;
+            p.vy = 0;
+            p.onGround = true;
+          }
+        }
+
+        // Check static coins (in 1-2 or bonus room)
+        const coinList = this.inBonusRoom ? this.bonusRoom.coins : this.stage.entities.filter(e => e.type === 'static_coin');
+        coinList.forEach(c => {
+          if (!c.collected &&
+              p.x + pWidth > c.x && p.x < c.x + 20 &&
+              p.y + pHeight > c.y && p.y < c.y + 24) {
+            c.collected = true;
+            this.addCoin(c.x, c.y);
+          }
+        });
+
+        // Check Bowser's Axe in World 1-3
+        if (!this.inBonusRoom && this.stageNum === 3) {
+          const cCol = Math.floor((p.x + pWidth / 2) / TILE);
+          const cRow = Math.floor((p.y + pHeight / 2) / TILE);
+          if (this.stage.grid[cRow] && this.stage.grid[cRow][cCol] === 'A') {
+            this.triggerBridgeCollapse();
+            this.triggerFlagpole(true);
+            return;
+          }
+        }
+
+        // Check Flagpole reach
+        if (!this.inBonusRoom && p.x + pWidth >= this.stage.flagCol * TILE + 8) {
+          this.triggerFlagpole(false);
+          return;
+        }
+
+        // Check pitfall / lava death
+        if (p.y > this.height + 16) {
+          this.killPlayer();
+          return;
+        }
+
+        // Update Camera (Classic one-way scroll in main stage)
+        if (!this.inBonusRoom) {
+          const targetCam = p.x - this.width * 0.35;
+          if (targetCam > this.cameraX) {
+            this.cameraX = Math.min(this.stage.cols * TILE - this.width, targetCam);
+          }
+        }
+
+        // Animation frame progression
+        if (Math.abs(p.vx) > 0.15) {
+          p.animTick++;
+          if (p.animTick > (this.keys.run ? 5 : 8)) {
+            p.animTick = 0;
+            p.animFrame = (p.animFrame + 1) % 2;
+          }
+        } else {
+          p.animFrame = 0;
+        }
+      }
+
+      updateItems() {
+        const p = this.player;
+        const pWidth = 24;
+        const pHeight = p.power > 0 ? 52 : 32;
+
+        for (let i = this.items.length - 1; i >= 0; i--) {
+          const it = this.items[i];
+          if (it.emerging) {
+            it.y -= 1.0;
+            if (it.y <= it.targetY) {
+              it.y = it.targetY;
+              it.emerging = false;
+            }
+          } else {
+            if (it.type !== 'flower') {
+              it.vy = Math.min(8, it.vy + 0.4);
+              it.x += it.vx;
+
+              const col = Math.floor((it.x + (it.vx > 0 ? 28 : 2)) / TILE);
+              const row = Math.floor((it.y + 16) / TILE);
+              if (this.isSolidTile(row, col)) {
+                it.vx = -it.vx;
+              }
+
+              it.y += it.vy;
+              const footRow = Math.floor((it.y + 30) / TILE);
+              const centerCol = Math.floor((it.x + 15) / TILE);
+              if (this.isSolidTile(footRow, centerCol)) {
+                it.y = footRow * TILE - 30;
+                it.vy = it.type === 'star' ? -6.8 : 0;
+              }
+            }
+          }
+
+          // Collect check
+          if (
+            p.x + pWidth > it.x + 2 && p.x < it.x + 28 &&
+            p.y + pHeight > it.y + 2 && p.y < it.y + 30
+          ) {
+            if (it.type === 'mushroom') {
+              sound.sfxPowerup();
+              if (p.power === 0) {
+                p.power = 1;
+                p.y -= 20;
+              }
+              this.addScore(1000, it.x, it.y);
+              this.updateFormBadge();
+            } else if (it.type === 'flower') {
+              sound.sfxPowerup();
+              if (p.power === 0) p.y -= 20;
+              p.power = 2;
+              this.addScore(1000, it.x, it.y);
+              this.updateFormBadge();
+            } else if (it.type === '1up') {
+              sound.sfxOneUp();
+              this.lives++;
+              this.addScore(0, it.x, it.y, '1UP');
+            } else if (it.type === 'star') {
+              sound.sfxPowerup();
+              p.starTimer = 600; // 10 seconds of Starman invincibility!
+              this.addScore(1000, it.x, it.y, 'STAR!');
+              this.updateFormBadge();
+              sound.startBGM('star');
+            }
+            this.items.splice(i, 1);
+            continue;
+          }
+
+          if (it.y > this.height + 64) {
+            this.items.splice(i, 1);
+          }
+        }
+      }
+
+      updateFireballs() {
+        for (let i = this.fireballs.length - 1; i >= 0; i--) {
+          const fb = this.fireballs[i];
+          fb.x += fb.vx;
+          fb.y += fb.vy;
+          fb.vy = Math.min(7, fb.vy + 0.45);
+          fb.life--;
+
+          const col = Math.floor((fb.x + 6) / TILE);
+          const row = Math.floor((fb.y + 12) / TILE);
+          if (this.isSolidTile(row, col)) {
+            fb.y = row * TILE - 12;
+            fb.vy = -4.6; // Classic fireball bounce
+          }
+
+          const sideCol = Math.floor((fb.x + (fb.vx > 0 ? 12 : 0)) / TILE);
+          const midRow = Math.floor((fb.y + 6) / TILE);
+          if (this.isSolidTile(midRow, sideCol)) {
+            this.fireballs.splice(i, 1);
+            continue;
+          }
+
+          // Hit enemies
+          let hit = false;
+          if (!this.inBonusRoom) {
+            for (const en of this.stage.entities) {
+              if (!en.alive || en.type === 'static_coin') continue;
+              const ew = en.type === 'bowser' ? 48 : 30;
+              const eh = en.type === 'bowser' ? 54 : 32;
+              if (fb.x + 12 > en.x && fb.x < en.x + ew && fb.y + 12 > en.y && fb.y < en.y + eh) {
+                hit = true;
+                if (en.type === 'bowser') {
+                  en.hp--;
+                  sound.sfxKick();
+                  if (en.hp <= 0) {
+                    en.alive = false;
+                    this.addScore(5000, en.x, en.y, '5000!');
+                  }
+                } else {
+                  en.alive = false;
+                  en.state = 'flipped';
+                  en.vy = -5;
+                  sound.sfxKick();
+                  this.addScore(200, en.x, en.y);
+                }
+                break;
+              }
+            }
+          }
+
+          if (hit || fb.life <= 0 || fb.x > this.cameraX + this.width + 60) {
+            this.fireballs.splice(i, 1);
+          }
+        }
+      }
+
+      updateEnemies() {
+        if (this.inBonusRoom) return;
+        const p = this.player;
+        const pWidth = 24;
+        const pHeight = p.power > 0 ? 52 : 32;
+
+        for (const en of this.stage.entities) {
+          if (en.type === 'static_coin') continue;
+
+          if (!en.alive) {
+            if (en.state === 'squished') {
+              en.timer--;
+            } else if (en.state === 'flipped') {
+              en.y += en.vy;
+              en.vy += 0.45;
+            }
+            continue;
+          }
+
+          // Only activate enemies near camera
+          if (en.x > this.cameraX + this.width + 96) continue;
+
+          if (en.type === 'plant') {
+            en.timer = (en.timer + 1) % 180;
+            const distToMario = Math.abs((p.x + 12) - (en.x + 16));
+            if (en.timer < 70 && distToMario > 46) {
+              en.y = Math.max(en.baseY - 30, en.y - 1.0);
+            } else if (en.timer >= 95) {
+              en.y = Math.min(en.baseY + 24, en.y + 1.0);
+            }
+
+            // Collision with Mario when emerged
+            if (en.y < en.baseY + 8) {
+              if (
+                p.x + pWidth > en.x + 4 && p.x < en.x + 28 &&
+                p.y + pHeight > en.y + 4 && p.y < en.baseY
+              ) {
+                if (p.starTimer > 0) {
+                  en.alive = false;
+                  sound.sfxKick();
+                  this.addScore(200, en.x, en.y);
+                } else {
+                  this.hurtPlayer();
+                }
+              }
+            }
+            continue;
+          }
+
+          if (en.type === 'bowser') {
+            en.timer++;
+            en.x += en.vx;
+            if (en.x < en.minX || en.x > en.maxX) en.vx = -en.vx;
+            if (en.timer % 95 === 0 && en.vy === 0) {
+              en.vy = -6.8;
+            }
+            if (en.timer % 115 === 0) {
+              // Breathe fire toward Mario!
+              sound.sfxFireball();
+              this.bowserFires.push({
+                x: en.x - 16,
+                y: en.y + 18,
+                vx: -3.6
+              });
+            }
+            en.y += en.vy;
+            if (en.y < 8 * TILE) {
+              en.vy += 0.28;
+            } else {
+              en.y = 8 * TILE;
+              en.vy = 0;
+            }
+
+            if (
+              p.x + pWidth > en.x + 6 && p.x < en.x + 44 &&
+              p.y + pHeight > en.y + 6 && p.y < en.y + 52
+            ) {
+              if (p.starTimer > 0) {
+                en.alive = false;
+                this.addScore(5000, en.x, en.y, '5000!');
+              } else {
+                this.hurtPlayer();
+              }
+            }
+            continue;
+          }
+
+          // Goomba & Koopa Physics
+          en.vy = Math.min(8, (en.vy || 0) + 0.42);
+          en.x += en.vx;
+
+          const sideCol = Math.floor((en.x + (en.vx > 0 ? 29 : 2)) / TILE);
+          const midRow = Math.floor((en.y + 16) / TILE);
+          if (this.isSolidTile(midRow, sideCol)) {
+            en.vx = -en.vx;
+            if (en.state === 'shell_spin') sound.sfxBump();
+          }
+
+          en.y += en.vy;
+          const footRow = Math.floor((en.y + 32) / TILE);
+          const centerCol = Math.floor((en.x + 16) / TILE);
+          if (this.isSolidTile(footRow, centerCol)) {
+            en.y = footRow * TILE - 32;
+            en.vy = 0;
+          }
+
+          if (en.y > this.height + 64) {
+            en.alive = false;
+            continue;
+          }
+
+          // Spinning Koopa shell knocks out other enemies!
+          if (en.state === 'shell_spin') {
+            for (const other of this.stage.entities) {
+              if (other === en || !other.alive || other.type === 'plant' || other.type === 'static_coin') continue;
+              if (Math.abs(en.x - other.x) < 24 && Math.abs(en.y - other.y) < 28) {
+                other.alive = false;
+                other.state = 'flipped';
+                other.vy = -5.5;
+                en.combo = (en.combo || 0) + 1;
+                const pts = [100, 200, 400, 800, 1000][Math.min(4, en.combo - 1)];
+                sound.sfxKick();
+                if (en.combo >= 6) {
+                  this.lives++;
+                  sound.sfxOneUp();
+                  this.addScore(0, other.x, other.y, '1UP');
+                } else {
+                  this.addScore(pts, other.x, other.y);
+                }
+              }
+            }
+          }
+
+          // Collision with Mario
+          if (
+            p.x + pWidth > en.x + 3 && p.x < en.x + 29 &&
+            p.y + pHeight > en.y + 4 && p.y < en.y + 30
+          ) {
+            if (p.starTimer > 0) {
+              en.alive = false;
+              en.state = 'flipped';
+              en.vy = -5.5;
+              sound.sfxKick();
+              this.addScore(200, en.x, en.y);
+              continue;
+            }
+
+            const isStomp = p.vy > 0 && (p.y + pHeight - p.vy) <= en.y + 16;
+
+            if (en.type === 'goomba') {
+              if (isStomp) {
+                en.alive = false;
+                en.state = 'squished';
+                en.timer = 35;
+                p.vy = -6.8;
+                sound.sfxStomp();
+                this.addScore(100, en.x, en.y);
+              } else {
+                this.hurtPlayer();
+              }
+            } else if (en.type === 'koopa') {
+              if (en.state === 'walk') {
+                if (isStomp) {
+                  en.state = 'shell_idle';
+                  en.vx = 0;
+                  p.vy = -6.8;
+                  sound.sfxStomp();
+                  this.addScore(100, en.x, en.y);
+                } else {
+                  this.hurtPlayer();
+                }
+              } else if (en.state === 'shell_idle') {
+                // Kick the shell!
+                en.state = 'shell_spin';
+                en.combo = 0;
+                en.vx = (p.x + pWidth / 2 < en.x + 16) ? 4.8 : -4.8;
+                p.x += en.vx > 0 ? -4 : 4;
+                if (isStomp) p.vy = -6.2;
+                sound.sfxKick();
+                this.addScore(400, en.x, en.y);
+              } else if (en.state === 'shell_spin') {
+                if (isStomp) {
+                  en.state = 'shell_idle';
+                  en.vx = 0;
+                  p.vy = -6.8;
+                  sound.sfxStomp();
+                  this.addScore(100, en.x, en.y);
+                } else {
+                  this.hurtPlayer();
+                }
+              }
+            }
+          }
+        }
+
+        // Update Bowser firebreath
+        for (let i = this.bowserFires.length - 1; i >= 0; i--) {
+          const bf = this.bowserFires[i];
+          bf.x += bf.vx;
+          if (
+            p.x + pWidth > bf.x && p.x < bf.x + 28 &&
+            p.y + pHeight > bf.y && p.y < bf.y + 14
+          ) {
+            this.hurtPlayer();
+          }
+          if (bf.x < this.cameraX - 60) {
+            this.bowserFires.splice(i, 1);
+          }
+        }
+      }
+
+      updateParticles() {
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const pt = this.particles[i];
+          pt.x += pt.vx || 0;
+          pt.y += pt.vy || 0;
+          pt.vy = (pt.vy || 0) + 0.45;
+          pt.life--;
+          if (pt.life <= 0) this.particles.splice(i, 1);
+        }
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+          const ft = this.floatingTexts[i];
+          ft.y += ft.vy;
+          ft.life--;
+          if (ft.life <= 0) this.floatingTexts.splice(i, 1);
+        }
+      }
+
+      /***********************************************************************
+       * 5. RENDERING ENGINE
+       ***********************************************************************/
+      draw() {
+        const ctx = this.ctx;
+        const theme = this.inBonusRoom ? 'underground' : this.stage.theme;
+
+        // Sky / Background
+        if (theme === 'overworld') {
+          ctx.fillStyle = '#5c94fc'; // Classic NES Sky Blue
+        } else if (theme === 'underground') {
+          ctx.fillStyle = '#000000';
+        } else {
+          ctx.fillStyle = '#111118';
+        }
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        ctx.save();
+        ctx.translate(-Math.floor(this.cameraX), 0);
+
+        // Draw clouds, hills, and bushes in Overworld
+        if (theme === 'overworld') {
+          this.drawScenery();
+        }
+
+        // Draw emerging items behind blocks first
+        this.items.filter(it => it.emerging).forEach(it => this.drawItem(it));
+
+        // Draw Piranha plants behind pipes
+        if (!this.inBonusRoom) {
+          this.stage.entities.filter(e => e.type === 'plant' && e.alive).forEach(en => {
+            ctx.drawImage(Sprites.plant, en.x, en.y);
+          });
+        }
+
+        // Draw Tile Grid
+        this.drawTiles(theme);
+
+        // Draw Flagpole & Castle at end of stage
+        if (!this.inBonusRoom) {
+          this.drawGoalpost();
+        }
+
+        // Draw active items
+        this.items.filter(it => !it.emerging).forEach(it => this.drawItem(it));
+
+        // Draw static coins
+        const coinList = this.inBonusRoom ? this.bonusRoom.coins : this.stage.entities.filter(e => e.type === 'static_coin');
+        coinList.forEach(c => {
+          if (!c.collected) this.drawCoinSprite(c.x, c.y);
+        });
+
+        // Draw Enemies
+        if (!this.inBonusRoom) {
+          this.drawEnemies();
+        }
+
+        // Draw Fireballs & Bowser Fire
+        this.drawProjectiles();
+
+        // Draw Mario
+        this.drawMario();
+
+        // Draw Particles & Floating Score Popups
+        this.drawParticlesAndText();
+
+        ctx.restore();
+
+        // Draw Top Arcade HUD
+        this.drawHUD();
+      }
+
+      drawScenery() {
+        const ctx = this.ctx;
+        for (let i = 0; i < 14; i++) {
+          const baseX = i * 512;
+          // Green Hills
+          ctx.fillStyle = '#00a800';
+          ctx.beginPath();
+          ctx.moveTo(baseX + 30, 13 * TILE);
+          ctx.quadraticCurveTo(baseX + 110, 9.2 * TILE, baseX + 190, 13 * TILE);
+          ctx.fill();
+          ctx.strokeStyle = '#005800';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Clouds
+          const cx = baseX + 180;
+          const cy = 2.6 * TILE + (i % 2) * 28;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+          ctx.arc(cx + 22, cy - 6, 22, 0, Math.PI * 2);
+          ctx.arc(cx + 44, cy, 18, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Bushes
+          const bx = baseX + 340;
+          const by = 13 * TILE - 10;
+          ctx.fillStyle = '#4cd137';
+          ctx.beginPath();
+          ctx.arc(bx, by, 12, 0, Math.PI * 2);
+          ctx.arc(bx + 16, by - 4, 15, 0, Math.PI * 2);
+          ctx.arc(bx + 32, by, 12, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Hint arrow above Pipe #4 (Secret Bonus Room in World 1-1)
+        if (this.stageNum === 1) {
+          const pipeX = 58 * TILE;
+          const bounce = Math.sin(this.frameTick * 0.12) * 4;
+          ctx.fillStyle = '#fde047';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('▼ 按↓进密室', pipeX, 8 * TILE - 10 + bounce);
+        }
+      }
+
+      drawTiles(theme) {
+        const ctx = this.ctx;
+        const grid = this.getActiveGrid();
+        const startCol = Math.max(0, Math.floor(this.cameraX / TILE) - 1);
+        const endCol = Math.min(grid[0].length - 1, Math.ceil((this.cameraX + this.width) / TILE) + 1);
+
+        const brickColor = theme === 'underground' ? '#007898' : (theme === 'castle' ? '#7f8c8d' : '#c84c0c');
+        const groundColor = theme === 'underground' ? '#005878' : (theme === 'castle' ? '#57606f' : '#d86018');
+
+        for (let r = 0; r < grid.length; r++) {
+          for (let c = startCol; c <= endCol; c++) {
+            const t = grid[r][c];
+            if (t === '.') continue;
+
+            const meta = (!this.inBonusRoom && this.stage.blocksMeta[`${r},${c}`]) || { bumpY: 0 };
+            if (t === 'L' && meta.hidden) continue;
+
+            const x = c * TILE;
+            const y = r * TILE + (meta.bumpY || 0);
+
+            if (t === 'G') {
+              ctx.fillStyle = groundColor;
+              ctx.fillRect(x, y, TILE, TILE);
+              ctx.strokeStyle = '#000';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
+              ctx.fillStyle = 'rgba(255,255,255,0.22)';
+              ctx.fillRect(x + 3, y + 3, TILE - 6, 4);
+              ctx.fillRect(x + 14, y + 3, 3, TILE - 6);
+            } else if (t === 'B') {
+              ctx.fillStyle = brickColor;
+              ctx.fillRect(x, y, TILE, TILE);
+              ctx.fillStyle = '#000';
+              ctx.fillRect(x, y + 14, TILE, 2);
+              ctx.fillRect(x + 15, y, 2, 14);
+              ctx.fillRect(x + 7, y + 16, 2, 16);
+              ctx.fillRect(x + 23, y + 16, 2, 16);
+              ctx.fillStyle = 'rgba(255,255,255,0.25)';
+              ctx.fillRect(x + 2, y + 2, TILE - 4, 2);
+            } else if (t === '?') {
+              const shimmer = ['#f89818', '#fca044', '#fbd000', '#fca044'][Math.floor(this.frameTick / 12) % 4];
+              ctx.fillStyle = shimmer;
+              ctx.fillRect(x, y, TILE, TILE);
+              ctx.strokeStyle = '#78350f';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
+              // Corner rivets
+              ctx.fillStyle = '#78350f';
+              ctx.fillRect(x + 4, y + 4, 3, 3);
+              ctx.fillRect(x + TILE - 7, y + 4, 3, 3);
+              ctx.fillRect(x + 4, y + TILE - 7, 3, 3);
+              ctx.fillRect(x + TILE - 7, y + TILE - 7, 3, 3);
+              // Question Mark
+              ctx.fillStyle = '#ffffff';
+              ctx.font = 'bold 17px monospace';
+              ctx.textAlign = 'center';
+              ctx.fillText('?', x + TILE / 2, y + 23);
+            } else if (t === 'H') {
+              ctx.fillStyle = theme === 'underground' ? '#386890' : '#a86038';
+              ctx.fillRect(x, y, TILE, TILE);
+              ctx.strokeStyle = '#000';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
+              ctx.fillStyle = 'rgba(255,255,255,0.22)';
+              ctx.fillRect(x + 3, y + 3, TILE - 6, 3);
+            } else if (t === 'T' || t === 'W' || t === 'P' || t === 'E') {
+              ctx.fillStyle = '#00a800';
+              ctx.fillRect(x, y, TILE, TILE);
+              ctx.fillStyle = '#80d010';
+              ctx.fillRect(x + 5, y, 8, TILE);
+              ctx.fillStyle = '#005800';
+              ctx.fillRect(x + TILE - 7, y, 5, TILE);
+              ctx.strokeStyle = '#002800';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(x, y, TILE, TILE);
+            } else if (t === 'V') {
+              // Lava
+              ctx.fillStyle = '#e52521';
+              ctx.fillRect(x, y + 6, TILE, TILE - 6);
+              ctx.fillStyle = '#fbd000';
+              const wave = Math.sin(this.frameTick * 0.15 + c) * 3;
+              ctx.fillRect(x, y + 4 + wave, TILE, 5);
+            } else if (t === 'F') {
+              // Bowser bridge
+              ctx.fillStyle = '#d97706';
+              ctx.fillRect(x, y, TILE, 14);
+              ctx.strokeStyle = '#000';
+              ctx.strokeRect(x, y, TILE, 14);
+            } else if (t === 'A') {
+              // Golden Axe at bridge end
+              ctx.fillStyle = '#9ca3af';
+              ctx.fillRect(x + 12, y + 6, 6, 24);
+              ctx.fillStyle = '#fbd000';
+              ctx.beginPath();
+              ctx.arc(x + 18, y + 12, 11, -Math.PI / 2, Math.PI / 2);
+              ctx.fill();
+            }
+          }
+        }
+      }
+
+      drawGoalpost() {
+        const ctx = this.ctx;
+        const flagX = this.stage.flagCol * TILE + 12;
+        const poleTopY = 3 * TILE;
+        const poleBotY = 12 * TILE;
+
+        // Base block
+        ctx.fillStyle = '#a86038';
+        ctx.fillRect(this.stage.flagCol * TILE, 12 * TILE, TILE, TILE);
+        ctx.strokeStyle = '#000';
+        ctx.strokeRect(this.stage.flagCol * TILE, 12 * TILE, TILE, TILE);
+
+        // Pole
+        ctx.fillStyle = '#80d010';
+        ctx.fillRect(flagX, poleTopY, 6, poleBotY - poleTopY);
+        ctx.fillStyle = '#fbd000';
+        ctx.beginPath();
+        ctx.arc(flagX + 3, poleTopY, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Flag banner
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(flagX + 2, this.flagY);
+        ctx.lineTo(flagX - 38, this.flagY + 14);
+        ctx.lineTo(flagX + 2, this.flagY + 28);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#e52521';
+        ctx.beginPath();
+        ctx.arc(flagX - 14, this.flagY + 14, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // End Fortress Castle
+        const cx = this.stage.castleCol * TILE;
+        const cy = 8 * TILE;
+        ctx.fillStyle = '#c84c0c';
+        ctx.fillRect(cx, cy + 48, TILE * 4, TILE * 5 - 48);
+        ctx.fillRect(cx + TILE * 0.75, cy, TILE * 2.5, 48);
+        // Battlements
+        for (let i = 0; i < 4; i++) {
+          ctx.fillRect(cx + i * TILE + 4, cy + 36, 20, 12);
+        }
+        // Castle Arch Door
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(cx + TILE * 2, 13 * TILE - 26, 20, Math.PI, 0);
+        ctx.lineTo(cx + TILE * 2 + 20, 13 * TILE);
+        ctx.lineTo(cx + TILE * 2 - 20, 13 * TILE);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      drawCoinSprite(x, y) {
+        const ctx = this.ctx;
+        const w = [14, 10, 4, 10][Math.floor(this.frameTick / 8) % 4];
+        ctx.fillStyle = '#fbd000';
+        ctx.fillRect(x + (16 - w) / 2, y, w, 22);
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + (16 - w) / 2, y, w, 22);
+      }
+
+      drawItem(it) {
+        const ctx = this.ctx;
+        if (it.type === 'mushroom') {
+          ctx.drawImage(Sprites.mushroom, it.x, it.y);
+        } else if (it.type === '1up') {
+          ctx.drawImage(Sprites.oneup, it.x, it.y);
+        } else if (it.type === 'flower') {
+          ctx.drawImage(Sprites.flower, it.x, it.y);
+        } else if (it.type === 'star') {
+          ctx.drawImage(Sprites.star, it.x, it.y);
+        }
+      }
+
+      drawEnemies() {
+        const ctx = this.ctx;
+        for (const en of this.stage.entities) {
+          if (en.type === 'plant' || en.type === 'static_coin') continue;
+          if (!en.alive && en.state === 'squished' && en.timer <= 0) continue;
+          if (en.x < this.cameraX - 80 || en.x > this.cameraX + this.width + 80) continue;
+
+          ctx.save();
+          if (en.state === 'flipped') {
+            ctx.translate(en.x + 16, en.y + 16);
+            ctx.scale(1, -1);
+            ctx.translate(-(en.x + 16), -(en.y + 16));
+          }
+
+          if (en.type === 'goomba') {
+            if (!en.alive && en.state === 'squished') {
+              ctx.drawImage(Sprites.goomba[2], en.x, en.y);
+            } else {
+              const f = Math.floor(this.frameTick / 10) % 2;
+              ctx.drawImage(Sprites.goomba[f], en.x, en.y);
+            }
+          } else if (en.type === 'koopa') {
+            if (en.state === 'walk') {
+              ctx.translate(en.x + 16, en.y + 16);
+              if (en.vx > 0) ctx.scale(-1, 1);
+              ctx.drawImage(Sprites.koopa.walk, -16, -16);
+            } else {
+              ctx.drawImage(Sprites.koopa.shell, en.x, en.y);
+            }
+          } else if (en.type === 'bowser') {
+            // Draw King Bowser
+            ctx.fillStyle = '#15803d';
+            ctx.fillRect(en.x + 6, en.y + 8, 38, 44);
+            ctx.fillStyle = '#e52521';
+            ctx.fillRect(en.x + 10, en.y, 18, 10); // Red mane
+            ctx.fillStyle = '#fde047';
+            ctx.fillRect(en.x + 8, en.y + 18, 22, 28); // Belly
+            // Spiked shell
+            ctx.fillStyle = '#166534';
+            ctx.fillRect(en.x + 26, en.y + 12, 20, 34);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(en.x + 42, en.y + 16, 6, 6);
+            ctx.fillRect(en.x + 42, en.y + 28, 6, 6);
+            // Eye
+            ctx.fillStyle = '#fde047';
+            ctx.fillRect(en.x + 10, en.y + 10, 6, 6);
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(en.x + 10, en.y + 12, 3, 3);
+          }
+          ctx.restore();
+        }
+      }
+
+      drawProjectiles() {
+        const ctx = this.ctx;
+        this.fireballs.forEach(fb => {
+          ctx.fillStyle = (Math.floor(this.frameTick / 3) % 2 === 0) ? '#e52521' : '#fbd000';
+          ctx.beginPath();
+          ctx.arc(fb.x + 6, fb.y + 6, 6, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        this.bowserFires.forEach(bf => {
+          ctx.fillStyle = '#f97316';
+          ctx.fillRect(bf.x, bf.y, 26, 10);
+          ctx.fillStyle = '#fde047';
+          ctx.fillRect(bf.x + 4, bf.y + 2, 18, 6);
+        });
+      }
+
+      drawMario() {
+        const ctx = this.ctx;
+        const p = this.player;
+        if (p.invincibleTimer > 0 && Math.floor(this.frameTick / 3) % 2 === 0) return;
+
+        const spriteSet = p.power === 2 ? Sprites.marioFire : (p.power === 1 ? Sprites.marioBig : Sprites.marioSmall);
+        let img = spriteSet.idle;
+        if (!p.onGround) {
+          img = spriteSet.jump;
+        } else if (Math.abs(p.vx) > 0.2 && p.animFrame === 1) {
+          img = spriteSet.run;
+        }
+
+        const pHeight = p.power > 0 ? 52 : 32;
+        ctx.save();
+        ctx.translate(p.x + 14, p.y + pHeight / 2);
+        if (p.dir === -1) ctx.scale(-1, 1);
+
+        // Rainbow aura when Starman is active!
+        if (p.starTimer > 0) {
+          const colors = ['#fde047', '#f43f5e', '#38bdf8', '#4ade80'];
+          ctx.shadowColor = colors[Math.floor(this.frameTick / 3) % 4];
+          ctx.shadowBlur = 14;
+        }
+
+        ctx.drawImage(img, -img.width / 2, -pHeight / 2, img.width, pHeight);
+        ctx.restore();
+      }
+
+      drawParticlesAndText() {
+        const ctx = this.ctx;
+        this.particles.forEach(pt => {
+          if (pt.type === 'brick') {
+            ctx.fillStyle = '#c84c0c';
+            ctx.fillRect(pt.x, pt.y, 10, 10);
+            ctx.strokeStyle = '#000';
+            ctx.strokeRect(pt.x, pt.y, 10, 10);
+          } else if (pt.type === 'coin_pop') {
+            this.drawCoinSprite(pt.x, pt.y);
+          }
+        });
+
+        this.floatingTexts.forEach(ft => {
+          ctx.fillStyle = ft.color || '#ffffff';
+          ctx.font = 'bold 13px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(ft.text, ft.x + 12, ft.y);
+        });
+      }
+
+      drawHUD() {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.fillRect(0, 0, this.width, 46);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px "Press Start 2P", monospace';
+        ctx.textAlign = 'left';
+
+        ctx.fillText('MARIO', 24, 19);
+        ctx.fillText(String(this.score).padStart(6, '0'), 24, 38);
+
+        ctx.fillStyle = '#fde047';
+        ctx.fillText(`🪙x${String(this.coins).padStart(2, '0')}`, 175, 30);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('WORLD', 310, 19);
+        ctx.fillText(this.inBonusRoom ? '1-1B' : this.stage.name, 318, 38);
+
+        ctx.fillText('TIME', 465, 19);
+        ctx.fillStyle = this.timeLeft < 60 ? '#f87171' : '#fde047';
+        ctx.fillText(String(this.timeLeft).padStart(3, '0'), 472, 38);
+
+        ctx.fillStyle = '#f87171';
+        ctx.fillText(`❤️x${this.lives}`, 595, 30);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(`TOP ${String(this.highScore).padStart(6, '0')}`, this.width - 18, 30);
+        ctx.restore();
+      }
+    }
+
+    /*************************************************************************
+     * 6. INITIALIZATION, INPUT BINDINGS & GAME LOOP
+     *************************************************************************/
+    const canvas = document.getElementById('game-canvas');
+    const overlayScreen = document.getElementById('overlay-screen');
+    const overlayTitle = document.getElementById('overlay-title');
+    const overlaySubtitle = document.getElementById('overlay-subtitle');
+    const btnStartGame = document.getElementById('btn-start-game');
+
+    let game = null;
+    let rafId = null;
+
+    function showOverlay(title, subtitle, buttonLabel) {
+      overlayTitle.textContent = title;
+      overlaySubtitle.textContent = subtitle;
+      btnStartGame.textContent = buttonLabel;
+      overlayScreen.classList.remove('hidden');
+    }
+
+    function hideOverlay() {
+      overlayScreen.classList.add('hidden');
+    }
+
+    function startOrResumeGame() {
+      sound.init();
+      if (!game) return;
+      if (game.state === 'gameover' || game.state === 'victory') {
+        game.score = 0;
+        game.coins = 0;
+        game.lives = 3;
+        game.loadStage(1, true);
+      }
+      game.state = 'playing';
+      hideOverlay();
+      sound.startBGM(game.getDesiredTrack());
+      updatePauseButtonUI();
+    }
+
+    function togglePause() {
+      if (!game) return;
+      if (game.state === 'playing') {
+        game.state = 'paused';
+        sound.stopBGM();
+        showOverlay('游戏已暂停', '随时准备好后点击下方按钮继续你的冒险！', '▶ 继续游戏');
+      } else if (game.state === 'paused') {
+        startOrResumeGame();
+      }
+      updatePauseButtonUI();
+    }
+
+    function updatePauseButtonUI() {
+      const icon = document.getElementById('pause-icon');
+      const label = document.getElementById('pause-label');
+      if (!game || game.state !== 'paused') {
+        icon.textContent = '⏸';
+        label.textContent = '暂停';
+      } else {
+        icon.textContent = '▶';
+        label.textContent = '继续';
+      }
+    }
+
+    function bindInputs() {
+      const keyMap = (code, isDown) => {
+        if (!game) return;
+        if (code === 'ArrowLeft' || code === 'KeyA') game.keys.left = isDown;
+        if (code === 'ArrowRight' || code === 'KeyD') game.keys.right = isDown;
+        if (code === 'ArrowDown' || code === 'KeyS') game.keys.down = isDown;
+        if (code === 'Space' || code === 'ArrowUp' || code === 'KeyW' || code === 'KeyK' || code === 'KeyZ') {
+          game.keys.jump = isDown;
+        }
+        if (code === 'KeyJ' || code === 'KeyX' || code === 'ShiftLeft' || code === 'ShiftRight') {
+          game.keys.run = isDown;
+        }
+      };
+
+      window.addEventListener('keydown', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+          e.preventDefault();
+        }
+        if (e.code === 'KeyP') {
+          togglePause();
+          return;
+        }
+        if (e.code === 'KeyR') {
+          if (game) {
+            game.loadStage(game.stageNum, true);
+            startOrResumeGame();
+          }
+          return;
+        }
+        keyMap(e.code, true);
+      });
+
+      window.addEventListener('keyup', (e) => {
+        keyMap(e.code, false);
+      });
+
+      // Touch / On-screen Gamepad bindings
+      const bindHoldButton = (btnId, keyProp) => {
+        const el = document.getElementById(btnId);
+        if (!el) return;
+        const press = (e) => {
+          e.preventDefault();
+          el.classList.add('active');
+          if (game) game.keys[keyProp] = true;
+        };
+        const release = (e) => {
+          e.preventDefault();
+          el.classList.remove('active');
+          if (game) game.keys[keyProp] = false;
+        };
+        el.addEventListener('mousedown', press);
+        el.addEventListener('mouseup', release);
+        el.addEventListener('mouseleave', release);
+        el.addEventListener('touchstart', press, { passive: false });
+        el.addEventListener('touchend', release, { passive: false });
+        el.addEventListener('touchcancel', release, { passive: false });
+      };
+
+      bindHoldButton('touch-left', 'left');
+      bindHoldButton('touch-down', 'down');
+      bindHoldButton('touch-right', 'right');
+      bindHoldButton('touch-b', 'run');
+      bindHoldButton('touch-a', 'jump');
+
+      // Top bar buttons
+      btnStartGame.addEventListener('click', startOrResumeGame);
+      document.getElementById('btn-pause').addEventListener('click', togglePause);
+      document.getElementById('btn-restart').addEventListener('click', () => {
+        if (!game) return;
+        game.lives = 3;
+        game.loadStage(game.stageNum, true);
+        startOrResumeGame();
+      });
+
+      document.getElementById('btn-audio').addEventListener('click', () => {
+        const on = sound.toggle();
+        document.getElementById('audio-icon').textContent = on ? '🔊' : '🔇';
+        document.getElementById('audio-label').textContent = on ? '音效: 开' : '音效: 关';
+      });
+
+      [1, 2, 3].forEach(num => {
+        document.getElementById(`btn-stage-${num}`).addEventListener('click', () => {
+          if (!game) return;
+          game.loadStage(num, false);
+          startOrResumeGame();
+        });
+      });
+
+      const wrapper = document.getElementById('canvas-wrapper');
+      document.getElementById('btn-fullscreen').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          if (wrapper.requestFullscreen) wrapper.requestFullscreen().catch(() => {});
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+        }
+      });
+
+      const webShareModal = document.getElementById('web-share-modal');
+      document.getElementById('btn-web-share').addEventListener('click', () => {
+        webShareModal.classList.remove('hidden');
+      });
+      document.getElementById('btn-close-web-share').addEventListener('click', () => {
+        webShareModal.classList.add('hidden');
+      });
+      document.getElementById('btn-ok-web-share').addEventListener('click', () => {
+        webShareModal.classList.add('hidden');
+      });
+      document.getElementById('btn-download-html').addEventListener('click', () => {
+        const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'index.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+
+      const helpModal = document.getElementById('help-modal');
+      document.getElementById('btn-help').addEventListener('click', () => {
+        helpModal.classList.remove('hidden');
+      });
+      document.getElementById('btn-close-help').addEventListener('click', () => {
+        helpModal.classList.add('hidden');
+      });
+      document.getElementById('btn-ok-help').addEventListener('click', () => {
+        helpModal.classList.add('hidden');
+      });
+    }
+
+    const FIXED_STEP_MS = 1000 / 60; // Strict 60.0 FPS NES physics timestep
+    let lastFrameTime = 0;
+    let accumulator = 0;
+
+    function gameLoop(timestamp) {
+      if (!lastFrameTime) lastFrameTime = timestamp;
+      let delta = timestamp - lastFrameTime;
+      lastFrameTime = timestamp;
+      // Cap delta to avoid spiral of death after tab switch
+      if (delta > 100) delta = FIXED_STEP_MS;
+      accumulator += delta;
+
+      if (game) {
+        while (accumulator >= FIXED_STEP_MS) {
+          game.update();
+          accumulator -= FIXED_STEP_MS;
+        }
+        game.draw();
+      }
+      rafId = requestAnimationFrame(gameLoop);
+    }
+
+    window.onload = () => {
+      game = new SuperMarioGame(canvas);
+      bindInputs();
+      game.draw();
+      if (rafId) cancelAnimationFrame(rafId);
+      lastFrameTime = 0;
+      accumulator = 0;
+      rafId = requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
